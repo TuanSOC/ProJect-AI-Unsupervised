@@ -1,103 +1,92 @@
 # AI Unsupervised SQLi Detection System
 
-Hệ thống phát hiện SQL Injection sử dụng AI không giám sát (Unsupervised Learning) với Isolation Forest.
+## 🎯 Overview
+Hệ thống phát hiện SQL Injection sử dụng AI không giám sát (Unsupervised Learning) với Isolation Forest algorithm.
 
 ## 🚀 Quick Start
 
-### Ubuntu Setup
+### 1. Install Dependencies
 ```bash
-# Clone repository
-git clone https://github.com/TuanSOC/ProJect-AI-Unsupervised.git
-cd ProJect-AI-Unsupervised
+pip install -r requirements.txt
+```
 
-# Quick setup
-chmod +x quick_start.sh
-./quick_start.sh
+### 2. Fix Detection Issues (if needed)
+```bash
+# Test detection accuracy
+python3 fix_detection_threshold.py
 
-# Start web dashboard
+# Retrain model with balanced data
+python3 retrain_model_balanced.py
+```
+
+### 3. Run Web Dashboard
+```bash
 python3 app.py
+```
 
-# Start real-time detection
+### 4. Run Realtime Detection
+```bash
 python3 realtime_log_collector.py
 ```
 
-### Access
-- **Web Dashboard**: http://localhost:5000
-- **Real-time Threats**: `tail -f realtime_threats.jsonl`
+## 📊 Features
+- **Unsupervised AI**: Isolation Forest for anomaly detection
+- **Real-time Monitoring**: Apache log monitoring
+- **Web Dashboard**: Flask-based interface
+- **Pattern Detection**: Rule-based + AI hybrid approach
+- **False Positive Reduction**: Balanced training data
 
-## 📁 Project Structure
+## 🔧 Configuration
+- **Detection Threshold**: 0.8 (adjustable)
+- **Log File**: `/var/log/apache2/access_full_json.log`
+- **Webhook**: `http://localhost:5000/api/realtime-detect`
 
+## 🛠️ Troubleshooting
+
+### False Positive Issues
+Nếu hệ thống báo false positive (detect normal request là SQLi):
+
+1. **Test detection accuracy**:
+   ```bash
+   python3 fix_detection_threshold.py
+   ```
+
+2. **Retrain model với balanced data**:
+   ```bash
+   python3 retrain_model_balanced.py
+   ```
+
+3. **Restart realtime collector**:
+```bash
+   python3 realtime_log_collector.py
+```
+
+### Clean Up Project
+```bash
+python3 cleanup_project.py
+```
+
+## 📈 Performance
+- **Accuracy**: High detection rate for known SQLi patterns
+- **False Positives**: Reduced with balanced training
+- **Real-time**: Sub-second detection latency
+
+## 📁 Essential Files
 ```
 ├── app.py                          # Flask web application
 ├── optimized_sqli_detector.py      # Core AI model (Isolation Forest)
 ├── realtime_log_collector.py       # Real-time log monitoring
-├── test_payload_capture.py         # Test payload capture
-├── fix_sklearn_version.py          # Fix sklearn version mismatch
-├── quick_start.sh                  # Quick start script
-├── setup_user.sh                   # User setup script
+├── fix_detection_threshold.py      # Fix false positive issues
+├── retrain_model_balanced.py       # Retrain with balanced data
+├── cleanup_project.py              # Clean up unnecessary files
 ├── requirements.txt                # Python dependencies
 ├── templates/index.html            # Web dashboard template
 └── models/                         # AI model storage
     └── optimized_sqli_detector.pkl
 ```
 
-## 🔧 Core Features
-
-- **Unsupervised AI Detection**: Isolation Forest algorithm
-- **Real-time Monitoring**: Apache log analysis
-- **Web Dashboard**: Visual threat monitoring
-- **Payload Capture**: Query string and POST data analysis
-- **Production Ready**: Error handling and logging
-
-## 📊 AI Model Details
-
-- **Algorithm**: Isolation Forest
-- **Features**: URI length, query parameters, SQLi patterns, entropy
-- **Threshold**: 0.7 (configurable)
-- **Training**: Unsupervised (no labeled data required)
-
-## 🛠️ Dependencies
-
-```bash
-pip install flask pandas scikit-learn joblib requests
-```
-
-## 📝 Log Format
-
-System expects Apache logs in JSON format with fields:
-- `time`, `remote_ip`, `method`, `uri`
-- `query_string`, `payload`, `status`
-- `user_agent`, `referer`, `cookie`
-
 ## 🎯 Usage
-
 1. **Web Dashboard**: Monitor threats via web interface
 2. **Real-time Detection**: Monitor Apache logs continuously
 3. **API Endpoints**: `/api/detect`, `/api/realtime-detect`
 4. **Batch Analysis**: Upload log files for analysis
-
-## 🔍 Detection Capabilities
-
-- SQL Injection patterns
-- Anomalous request behavior
-- Suspicious query parameters
-- Unusual payload characteristics
-- Real-time threat scoring
-
-## 📈 Performance
-
-- **Processing Speed**: ~1000 logs/second
-- **Memory Usage**: <100MB
-- **Detection Accuracy**: >95% on test data
-- **False Positive Rate**: <5%
-
-## 🚨 Security Features
-
-- Input validation and sanitization
-- Error handling and logging
-- Rate limiting and monitoring
-- Secure API endpoints
-
-## 📞 Support
-
-For issues or questions, please check the logs or create an issue in the repository.
