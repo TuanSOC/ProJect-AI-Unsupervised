@@ -4,10 +4,9 @@
 echo "🔍 Setting up Realtime SQLi Detection System"
 echo "============================================="
 
-# Kiểm tra quyền sudo
-if [ "$EUID" -ne 0 ]; then
-    echo "❌ Please run with sudo for log file access"
-    exit 1
+# Kiểm tra quyền sudo (optional)
+if [ "$EUID" -eq 0 ]; then
+    echo "⚠️ Running as root. Consider running as regular user for better security."
 fi
 
 # Tạo thư mục models nếu chưa có
@@ -19,7 +18,20 @@ fi
 # Kiểm tra AI model
 if [ ! -f "models/optimized_sqli_detector.pkl" ]; then
     echo "🤖 Training AI model..."
-    python3 optimized_sqli_detector.py
+    python3 -c "
+from optimized_sqli_detector import OptimizedSQLIDetector
+import json
+
+# Load sample data
+with open('sqli_logs_clean_100k.jsonl', 'r') as f:
+    clean_logs = [json.loads(line.strip()) for line in f if line.strip()]
+
+# Train model
+detector = OptimizedSQLIDetector()
+detector.train(clean_logs[:10000])  # Use first 10k logs for training
+detector.save_model('models/optimized_sqli_detector.pkl')
+print('✅ AI model trained and saved')
+"
     if [ $? -ne 0 ]; then
         echo "❌ Failed to train AI model"
         exit 1
@@ -65,9 +77,10 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Tạo systemd service file (optional)
-echo "🔧 Creating systemd service file..."
-cat > /etc/systemd/system/sqli-detection.service << EOF
+# Tạo systemd service file (optional - only if running as root)
+if [ "$EUID" -eq 0 ]; then
+    echo "🔧 Creating systemd service file..."
+    cat > /etc/systemd/system/sqli-detection.service << EOF
 [Unit]
 Description=SQLi Detection Monitoring System
 After=network.target
@@ -76,27 +89,36 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$(pwd)
-ExecStart=/usr/bin/python3 $(pwd)/start_realtime_monitoring.py
+ExecStart=/usr/bin/python3 $(pwd)/realtime_log_collector.py
 Restart=always
 RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 EOF
+    echo "✅ Systemd service file created"
+else
+    echo "ℹ️ Skipping systemd service creation (run as root to enable)"
+fi
 
 echo "✅ Setup completed successfully!"
 echo ""
-echo "🚀 To start monitoring:"
-echo "   python3 start_realtime_monitoring.py"
+echo "🚀 To start web application:"
+echo "   python3 app.py"
 echo ""
 echo "🌐 Web Dashboard: http://localhost:5000"
+echo ""
+echo "🚀 To start real-time monitoring:"
+echo "   python3 realtime_log_collector.py"
 echo ""
 echo "📊 To view realtime threats:"
 echo "   tail -f realtime_threats.jsonl"
 echo ""
-echo "🔧 To enable as system service:"
-echo "   sudo systemctl enable sqli-detection"
-echo "   sudo systemctl start sqli-detection"
-echo ""
-echo "📝 To view service logs:"
-echo "   sudo journalctl -u sqli-detection -f"
+if [ "$EUID" -eq 0 ]; then
+    echo "🔧 To enable as system service:"
+    echo "   sudo systemctl enable sqli-detection"
+    echo "   sudo systemctl start sqli-detection"
+    echo ""
+    echo "📝 To view service logs:"
+    echo "   sudo journalctl -u sqli-detection -f"
+fi
