@@ -38,12 +38,13 @@ print('✅ AI model trained and saved')
     fi
 fi
 
-# Kiểm tra Apache log file
+# Kiểm tra Apache log file (đã được cấu hình sẵn)
 LOG_FILE="/var/log/apache2/access_full_json.log"
 if [ ! -f "$LOG_FILE" ]; then
     echo "⚠️ Apache log file not found: $LOG_FILE"
-    echo "Please ensure Apache is running and logging to this file"
-    echo "You may need to configure Apache to log in JSON format"
+    echo "Please ensure Apache is running and the log file exists"
+else
+    echo "✅ Apache log file found: $LOG_FILE"
 fi
 
 # Tạo log directory
