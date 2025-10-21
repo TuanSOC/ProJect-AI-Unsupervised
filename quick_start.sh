@@ -32,6 +32,7 @@ import os
 # Add system paths
 sys.path.insert(0, '/usr/local/lib/python3.10/dist-packages')
 sys.path.insert(0, '/usr/lib/python3/dist-packages')
+sys.path.insert(0, '/home/dvwa/.local/lib/python3.10/site-packages')
 
 required = ['flask', 'pandas', 'scikit-learn', 'joblib']
 missing = []
