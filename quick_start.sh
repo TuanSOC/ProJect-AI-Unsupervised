@@ -27,6 +27,12 @@ fi
 echo "📦 Checking basic dependencies..."
 python3 -c "
 import sys
+import os
+
+# Add system paths
+sys.path.insert(0, '/usr/local/lib/python3.10/dist-packages')
+sys.path.insert(0, '/usr/lib/python3/dist-packages')
+
 required = ['flask', 'pandas', 'scikit-learn', 'joblib']
 missing = []
 for pkg in required:
@@ -38,6 +44,7 @@ for pkg in required:
 if missing:
     print(f'❌ Missing packages: {missing}')
     print('Please install with: pip install --user ' + ' '.join(missing))
+    print('Or run: ./setup_user.sh')
     sys.exit(1)
 else:
     print('✅ All dependencies available')
