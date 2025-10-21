@@ -546,12 +546,21 @@ def clear_cache_api():
         logger.error(f"Error clearing cache: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/realtime-detect', methods=['POST'])
+@app.route('/api/realtime-detect', methods=['POST', 'GET'])
 def realtime_detect():
     """Endpoint để nhận log realtime và phát hiện SQLi"""
     try:
         if not detector:
             return jsonify({'error': 'AI Model not loaded'}), 500
+        
+        # Handle GET request (for testing)
+        if request.method == 'GET':
+            return jsonify({
+                'status': 'ready',
+                'message': 'Realtime detection endpoint is active',
+                'model_loaded': detector is not None,
+                'threshold': 0.7
+            })
         
         data = request.json
         if not data:
