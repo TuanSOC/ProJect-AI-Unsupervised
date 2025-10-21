@@ -1,0 +1,278 @@
+#!/usr/bin/env python3
+"""
+Realtime Log Collector cho Apache - Tối ưu hóa
+Thu thập và phân tích log realtime từ Apache access logs
+"""
+
+import json
+import subprocess
+import time
+import logging
+import requests
+import threading
+from datetime import datetime
+from optimized_sqli_detector import OptimizedSQLIDetector
+import queue
+import signal
+import sys
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('realtime_sqli_detection.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+class RealtimeLogCollector:
+    """Thu thập và phân tích log realtime từ Apache"""
+    
+    def __init__(self, log_path="/var/log/apache2/access_full_json.log", 
+                 webhook_url="http://localhost:5000/api/realtime-detect",
+                 detection_threshold=0.7):
+        self.log_path = log_path
+        self.webhook_url = webhook_url
+        self.detection_threshold = detection_threshold
+        self.detector = None
+        self.log_queue = queue.Queue(maxsize=1000)
+        self.running = False
+        self.process = None
+        
+        # Statistics
+        self.stats = {
+            'total_logs': 0,
+            'sqli_detected': 0,
+            'errors': 0,
+            'start_time': datetime.now()
+        }
+        
+        # Load AI model
+        self.load_detector()
+        
+    def load_detector(self):
+        """Load AI model để phát hiện SQLi"""
+        try:
+            self.detector = OptimizedSQLIDetector()
+            self.detector.load_model('models/optimized_sqli_detector.pkl')
+            logger.info("✅ AI Model loaded successfully for realtime detection!")
+        except Exception as e:
+            logger.error(f"❌ Error loading AI model: {e}")
+            self.detector = None
+    
+    def parse_log_line(self, line):
+        """Parse một dòng log JSON"""
+        try:
+            # Loại bỏ whitespace và parse JSON
+            line = line.strip()
+            if not line:
+                return None
+                
+            # Parse JSON log
+            log_entry = json.loads(line)
+            
+            # Validate required fields
+            required_fields = ['time', 'remote_ip', 'method', 'uri']
+            if not all(field in log_entry for field in required_fields):
+                return None
+                
+            return log_entry
+            
+        except json.JSONDecodeError as e:
+            logger.warning(f"Invalid JSON log line: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"Error parsing log line: {e}")
+            return None
+    
+    def detect_sqli_realtime(self, log_entry):
+        """Phát hiện SQLi trong log entry realtime - Tối ưu hóa"""
+        if not self.detector:
+            return None
+            
+        try:
+            # Sử dụng AI model để phát hiện
+            is_anomaly, score = self.detector.predict_single(log_entry, threshold=self.detection_threshold)
+            
+            return {
+                'is_sqli': bool(is_anomaly),
+                'score': float(score),
+                'confidence': 'High' if abs(score) > 0.8 else 'Medium' if abs(score) > 0.6 else 'Low',
+                'timestamp': datetime.now().isoformat(),
+                'threat_level': 'CRITICAL' if is_anomaly else 'NONE'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in SQLi detection: {e}")
+            self.stats['errors'] += 1
+            return None
+    
+    def send_to_webhook(self, log_entry, detection_result):
+        """Gửi kết quả phát hiện đến webhook"""
+        try:
+            if not self.webhook_url:
+                logger.warning("Webhook URL not configured")
+                return False
+                
+            payload = {
+                'log': log_entry,
+                'detection': detection_result,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            response = requests.post(
+                self.webhook_url, 
+                json=payload, 
+                timeout=5,
+                headers={'Content-Type': 'application/json'}
+            )
+            
+            if response.status_code == 200:
+                logger.info(f"✅ Detection result sent to webhook")
+            else:
+                logger.warning(f"⚠️ Webhook response: {response.status_code}")
+                
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"⚠️ Failed to send to webhook: {e}")
+        except Exception as e:
+            logger.error(f"❌ Error sending to webhook: {e}")
+    
+    def process_log_line(self, log_entry):
+        """Xử lý một dòng log"""
+        if not log_entry:
+            return
+            
+        # Phát hiện SQLi
+        detection_result = self.detect_sqli_realtime(log_entry)
+        
+        if detection_result and detection_result['is_sqli']:
+            # Log threat
+            logger.warning(f"🚨 SQLi DETECTED!")
+            logger.warning(f"   IP: {log_entry.get('remote_ip', 'Unknown')}")
+            logger.warning(f"   URI: {log_entry.get('uri', 'Unknown')}")
+            logger.warning(f"   Query: {log_entry.get('query_string', 'None')}")
+            logger.warning(f"   Payload: {log_entry.get('payload', 'None')}")
+            logger.warning(f"   Score: {detection_result['score']:.3f}")
+            logger.warning(f"   Patterns: {detection_result.get('detected_patterns', 'N/A')}")
+            logger.warning(f"   Confidence: {detection_result['confidence']}")
+            logger.warning(f"   Threat Level: {detection_result['threat_level']}")
+            logger.warning("-" * 80)
+            
+            # Gửi đến webhook
+            self.send_to_webhook(log_entry, detection_result)
+            
+            # Lưu vào file threat log
+            self.save_threat_log(log_entry, detection_result)
+        else:
+            # Log normal traffic (optional)
+            logger.debug(f"Normal traffic from {log_entry.get('remote_ip', 'Unknown')} - {log_entry.get('uri', 'Unknown')}")
+    
+    def save_threat_log(self, log_entry, detection_result):
+        """Lưu threat log vào file"""
+        try:
+            threat_data = {
+                'timestamp': datetime.now().isoformat(),
+                'log': log_entry,
+                'detection': detection_result
+            }
+            
+            with open('realtime_threats.jsonl', 'a', encoding='utf-8') as f:
+                f.write(json.dumps(threat_data, ensure_ascii=False) + '\n')
+                
+        except Exception as e:
+            logger.error(f"Error saving threat log: {e}")
+    
+    def start_monitoring(self):
+        """Bắt đầu monitoring log realtime"""
+        logger.info(f"🚀 Starting realtime log monitoring from {self.log_path}")
+        logger.info(f"🎯 Detection threshold: {self.detection_threshold}")
+        logger.info(f"🔗 Webhook URL: {self.webhook_url}")
+        
+        try:
+            # Sử dụng tail -f để theo dõi log realtime
+            self.process = subprocess.Popen(
+                ['tail', '-f', self.log_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                bufsize=1
+            )
+            
+            self.running = True
+            logger.info("✅ Log monitoring started successfully!")
+            
+            # Đọc log lines realtime
+            while self.running:
+                try:
+                    line = self.process.stdout.readline()
+                    if not line:
+                        time.sleep(0.1)  # Small delay to avoid busy waiting
+                        continue
+                    
+                    # Parse và xử lý log line
+                    log_entry = self.parse_log_line(line)
+                    if log_entry:
+                        self.process_log_line(log_entry)
+                        
+                except Exception as e:
+                    logger.warning(f"Error reading log line: {e}")
+                    time.sleep(0.1)
+                    
+        except FileNotFoundError:
+            logger.error(f"❌ Log file not found: {self.log_path}")
+            logger.error("Please check if Apache is running and log file exists")
+        except PermissionError:
+            logger.error(f"❌ Permission denied accessing log file: {self.log_path}")
+            logger.error("Please run with sudo or check file permissions")
+        except Exception as e:
+            logger.error(f"❌ Error in log monitoring: {e}")
+        finally:
+            self.stop_monitoring()
+    
+    def stop_monitoring(self):
+        """Dừng monitoring"""
+        logger.info("🛑 Stopping log monitoring...")
+        self.running = False
+        
+        if self.process:
+            self.process.terminate()
+            self.process.wait()
+            
+        logger.info("✅ Log monitoring stopped")
+    
+    def signal_handler(self, signum, frame):
+        """Xử lý signal để dừng gracefully"""
+        logger.info(f"Received signal {signum}, stopping...")
+        self.stop_monitoring()
+        sys.exit(0)
+
+def main():
+    """Main function"""
+    print("🔍 Realtime SQLi Detection System")
+    print("=" * 50)
+    
+    # Tạo collector
+    collector = RealtimeLogCollector(
+        log_path="/var/log/apache2/access_full_json.log",
+        webhook_url="http://localhost:5000/api/realtime-detect",
+        detection_threshold=0.7
+    )
+    
+    # Setup signal handlers
+    signal.signal(signal.SIGINT, collector.signal_handler)
+    signal.signal(signal.SIGTERM, collector.signal_handler)
+    
+    try:
+        # Bắt đầu monitoring
+        collector.start_monitoring()
+    except KeyboardInterrupt:
+        logger.info("Received keyboard interrupt, stopping...")
+        collector.stop_monitoring()
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        collector.stop_monitoring()
+
+if __name__ == "__main__":
+    main()
