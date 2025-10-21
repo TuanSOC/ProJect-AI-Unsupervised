@@ -52,9 +52,9 @@ Nếu hệ thống báo false positive (detect normal request là SQLi):
    ```
 
 2. **Retrain model với balanced data**:
-   ```bash
+```bash
    python3 retrain_model_balanced.py
-   ```
+```
 
 3. **Restart realtime collector**:
 ```bash
