@@ -9,6 +9,13 @@ import os
 # Add system paths
 sys.path.insert(0, '/usr/local/lib/python3.10/dist-packages')
 sys.path.insert(0, '/usr/lib/python3/dist-packages')
+sys.path.insert(0, '/usr/local/lib/python3/dist-packages')
+
+# Debug: Show all paths
+print("Python paths:")
+for p in sys.path:
+    print(f"  {p}")
+print()
 
 print("🔍 Testing Python Dependencies")
 print("=" * 40)
