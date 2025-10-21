@@ -63,7 +63,7 @@ class RealtimeLogCollector:
             self.detector = None
     
     def parse_log_line(self, line):
-        """Parse một dòng log JSON"""
+        """Parse một dòng log JSON đã được format sẵn"""
         try:
             # Loại bỏ whitespace và parse JSON
             line = line.strip()
@@ -77,6 +77,9 @@ class RealtimeLogCollector:
             required_fields = ['time', 'remote_ip', 'method', 'uri']
             if not all(field in log_entry for field in required_fields):
                 return None
+            
+            # Xử lý query string và payload từ log đã format sẵn
+            self._process_formatted_log(log_entry)
                 
             return log_entry
             
@@ -86,6 +89,71 @@ class RealtimeLogCollector:
         except Exception as e:
             logger.warning(f"Error parsing log line: {e}")
             return None
+    
+    def _process_formatted_log(self, log_entry):
+        """Xử lý log đã được format sẵn với query_string và payload"""
+        try:
+            # Đảm bảo các field luôn tồn tại
+            log_entry.setdefault('query_string', '')
+            log_entry.setdefault('payload', '')
+            
+            # Parse query parameters từ query_string
+            query_string = log_entry.get('query_string', '')
+            if query_string:
+                query_params = {}
+                for param in query_string.split('&'):
+                    if '=' in param:
+                        key, value = param.split('=', 1)
+                        query_params[key] = value
+                log_entry['query_params'] = query_params
+            else:
+                log_entry['query_params'] = {}
+            
+            # Parse payload parameters
+            payload = log_entry.get('payload', '')
+            if payload:
+                payload_params = {}
+                for param in payload.split('&'):
+                    if '=' in param:
+                        key, value = param.split('=', 1)
+                        payload_params[key] = value
+                log_entry['payload_params'] = payload_params
+            else:
+                log_entry['payload_params'] = {}
+            
+            # Xử lý POST requests - payload thường rỗng trong Apache logs
+            method = log_entry.get('method', '').upper()
+            if method == 'POST' and not payload:
+                # Thử lấy từ referer nếu có
+                referer = log_entry.get('referer', '')
+                if referer and '?' in referer:
+                    referer_query = referer.split('?', 1)[1]
+                    log_entry['payload'] = referer_query
+                    log_entry['payload_source'] = 'referer'
+                    
+                    # Parse referer payload
+                    if referer_query:
+                        referer_params = {}
+                        for param in referer_query.split('&'):
+                            if '=' in param:
+                                key, value = param.split('=', 1)
+                                referer_params[key] = value
+                        log_entry['payload_params'] = referer_params
+            
+            # Tạo combined payload cho detection
+            combined_payload = payload or query_string
+            log_entry['combined_payload'] = combined_payload
+            
+            # Log debug info
+            if combined_payload:
+                logger.debug(f"Captured payload: {combined_payload[:100]}...")
+            
+        except Exception as e:
+            logger.warning(f"Error processing formatted log: {e}")
+            # Đảm bảo các field luôn tồn tại
+            log_entry.setdefault('query_params', {})
+            log_entry.setdefault('payload_params', {})
+            log_entry.setdefault('combined_payload', '')
     
     def detect_sqli_realtime(self, log_entry):
         """Phát hiện SQLi trong log entry realtime - Tối ưu hóa"""
