@@ -53,87 +53,23 @@
         .clean-log {
             background: linear-gradient(135deg, #2ed573 0%, #1e90ff 100%);
         }
-        .log-entry {
-            border-radius: 10px;
-            margin: 10px 0;
-            padding: 15px;
-            border-left: 5px solid;
+        .threat-level-critical {
+            background: linear-gradient(135deg, #ff4757 0%, #c44569 100%);
         }
-        .log-sqli {
-            border-left-color: #ff6b6b;
-            background: rgba(255, 107, 107, 0.1);
+        .threat-level-high {
+            background: linear-gradient(135deg, #ffa502 0%, #ff6348 100%);
         }
-        .log-clean {
-            border-left-color: #2ed573;
-            background: rgba(46, 213, 115, 0.1);
+        .threat-level-medium {
+            background: linear-gradient(135deg, #ff9ff3 0%, #f368e0 100%);
         }
-        .pattern-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            margin: 2px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-        .pattern-union { background: #ff6b6b; color: white; }
-        .pattern-boolean { background: #ffa502; color: white; }
-        .pattern-time { background: #ff6348; color: white; }
-        .pattern-obfuscated { background: #8e44ad; color: white; }
-        .pattern-drop { background: #e74c3c; color: white; }
-        .pattern-comments { background: #95a5a6; color: white; }
-        .pattern-special { background: #34495e; color: white; }
-        .confidence-high { color: #e74c3c; font-weight: bold; }
-        .confidence-medium { color: #f39c12; font-weight: bold; }
-        .confidence-low { color: #27ae60; font-weight: bold; }
-        
-        /* Threat Level Styles */
-        .threat-critical { background: #dc3545; color: white; }
-        .threat-high { background: #fd7e14; color: white; }
-        .threat-medium { background: #ffc107; color: black; }
-        .threat-low { background: #28a745; color: white; }
-        
-        
-        .analysis-results {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
-            border: 1px solid #dee2e6;
-        }
-        
-        .log-entry .card {
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            border: none;
-            border-radius: 10px;
-        }
-        
-        .log-entry .card-header {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            border-radius: 10px 10px 0 0;
-        }
-        
-        .log-entry .card-body {
-            background: white;
-        }
-        
-        .pattern-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            margin: 2px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .navbar {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        .threat-level-low {
+            background: linear-gradient(135deg, #54a0ff 0%, #2e86de 100%);
         }
         .btn-custom {
             background: linear-gradient(45deg, #667eea, #764ba2);
             border: none;
             border-radius: 25px;
-            padding: 10px 25px;
+            padding: 12px 30px;
             color: white;
             font-weight: bold;
             transition: all 0.3s ease;
@@ -143,196 +79,231 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             color: white;
         }
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 12px 15px;
+            transition: all 0.3s ease;
         }
-        .spinner-border {
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .alert-custom {
+            border-radius: 10px;
+            border: none;
+            padding: 15px 20px;
+            margin: 10px 0;
+        }
+        .log-entry {
+            background: rgba(255,255,255,0.9);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 5px solid #667eea;
+            transition: all 0.3s ease;
+        }
+        .log-entry:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .log-entry.sqli {
+            border-left-color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+        }
+        .log-entry.clean {
+            border-left-color: #2ed573;
+            background: rgba(46, 213, 115, 0.1);
+        }
+        .spinner-border-custom {
             color: #667eea;
+        }
+        .navbar-custom {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.2);
         }
     </style>
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <nav class="navbar navbar-expand-lg navbar-light navbar-custom">
         <div class="container">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-shield-alt"></i> AI SQL Injection Detection System
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="fas fa-shield-alt text-primary me-2"></i>
+                AI SQLi Detection System
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#dashboard">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#logs">Logs</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#patterns">Patterns</a>
-                    </li>
-                </ul>
+            <div class="navbar-nav ms-auto">
+                <button class="btn btn-outline-danger btn-sm" onclick="clearCache()">
+                    <i class="fas fa-trash me-1"></i> Clear Cache
+                </button>
             </div>
         </div>
     </nav>
 
     <div class="container mt-4">
-        <!-- Performance Metrics -->
+        <!-- Header -->
         <div class="row mb-4">
-            <div class="col-12 mb-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h4><i class="fas fa-tachometer-alt"></i> Dashboard Metrics</h4>
-                    <button class="btn btn-outline-primary btn-sm" onclick="refreshDashboard()">
-                        <i class="fas fa-sync-alt"></i> Refresh Dashboard
-                    </button>
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="mb-0">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            AI SQL Injection Detection System
+                        </h2>
+                        <p class="mb-0 mt-2">Test payload và xem AI detect SQLi</p>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-4">
+        </div>
+
+        <!-- Test Payload Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">
+                            <i class="fas fa-flask me-2"></i>
+                            Test Payload Detection
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="testForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="uri" class="form-label">URI</label>
+                                        <input type="text" class="form-control" id="uri" 
+                                               placeholder="/DVWA/vulnerabilities/sqli/index.php" 
+                                               value="/DVWA/vulnerabilities/sqli/index.php">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="queryString" class="form-label">Query String</label>
+                                        <input type="text" class="form-control" id="queryString" 
+                                               placeholder="?id=1&Submit=Submit" 
+                                               value="?id=1&Submit=Submit">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="payload" class="form-label">Payload</label>
+                                        <input type="text" class="form-control" id="payload" 
+                                               placeholder="id=1&Submit=Submit" 
+                                               value="id=1&Submit=Submit">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="userAgent" class="form-label">User Agent</label>
+                                        <input type="text" class="form-control" id="userAgent" 
+                                               placeholder="Mozilla/5.0..." 
+                                               value="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="remoteIp" class="form-label">Remote IP</label>
+                                        <input type="text" class="form-control" id="remoteIp" 
+                                               placeholder="192.168.1.100" 
+                                               value="192.168.1.100">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="method" class="form-label">Method</label>
+                                        <select class="form-control" id="method">
+                                            <option value="GET">GET</option>
+                                            <option value="POST">POST</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Quick Test Payloads:</label>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="setPayload('Normal', '?id=1&Submit=Submit', 'id=1&Submit=Submit')">Normal</button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="setPayload('UNION', '?id=%27+UNION+SELECT+null%2C+version%28%29+--&Submit=Submit', 'id=%27+UNION+SELECT+null%2C+version%28%29+--&Submit=Submit')">UNION</button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="setPayload('OR 1=1', '?id=%27+OR+%271%27%3D%271&Submit=Submit', 'id=%27+OR+%271%27%3D%271&Submit=Submit')">OR 1=1</button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="setPayload('Command', '?id=127.0.0.1%3B+ls+-la&Submit=Submit', 'id=127.0.0.1%3B+ls+-la&Submit=Submit')">Command</button>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-custom">
+                                <i class="fas fa-search me-2"></i>Test Detection
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detection Result -->
+        <div class="row mb-4" id="resultSection" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">
+                            <i class="fas fa-search me-2"></i>
+                            Detection Result
+                        </h4>
+                    </div>
+                    <div class="card-body" id="detectionResult">
+                        <!-- Result will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
                 <div class="metric-card">
                     <div class="metric-value" id="totalLogs">0</div>
                     <div class="metric-label">Total Logs</div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="metric-card sqli-detected">
                     <div class="metric-value" id="sqliDetected">0</div>
                     <div class="metric-label">SQLi Detected</div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <div class="metric-card clean-log">
+                    <div class="metric-value" id="cleanLogs">0</div>
+                    <div class="metric-label">Clean Logs</div>
+                </div>
+            </div>
+            <div class="col-md-3">
                 <div class="metric-card">
                     <div class="metric-value" id="detectionRate">0%</div>
                     <div class="metric-label">Detection Rate</div>
                 </div>
             </div>
-            <!-- Removed False Positive Rate card per request -->
         </div>
 
-        <!-- Main Content -->
+        <!-- Recent Threats -->
         <div class="row">
-            <!-- Performance Chart -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-chart-line"></i> Performance Overview</h5>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="performanceChart" width="400" height="200"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pattern Analysis -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-search"></i> SQLi Pattern Analysis</h5>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="patternChart" width="400" height="200"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Logs Section -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-danger text-white">
-                        <h5><i class="fas fa-exclamation-triangle"></i> SQLi Threats Analysis</h5>
-                        <button class="btn btn-light btn-sm float-end" onclick="refreshLogs()">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="loading" id="logsLoading">
-                            <div class="spinner-border" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <p>Analyzing logs...</p>
-                        </div>
-                        <div id="logsContainer">
-                            <!-- Logs will be loaded here -->
-                        </div>
-                        
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- File Upload Section -->
-        <div class="row mt-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="fas fa-upload"></i> Upload Log File for Analysis</h5>
+                        <h4 class="mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Recent Threats
+                        </h4>
                     </div>
                     <div class="card-body">
-                        <div class="mb-3">
-                            <label for="logFile" class="form-label">Choose Log File</label>
-                            <input type="file" class="form-control" id="logFile" accept=".jsonl,.csv,.txt">
-                            <div class="form-text">Supported formats: JSONL, CSV, TXT (Max 100MB)</div>
-                        </div>
-                        <button class="btn btn-custom" onclick="uploadAndAnalyze()">
-                            <i class="fas fa-upload"></i> Upload & Analyze
-                        </button>
-                        <div id="uploadResult" class="mt-3"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Real-time Detection -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-bolt"></i> Real-time Detection</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="logUri" class="form-label">URI</label>
-                                    <input type="text" class="form-control" id="logUri" placeholder="/api/user">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="logQuery" class="form-label">Query String</label>
-                                    <input type="text" class="form-control" id="logQuery" placeholder="id=1 OR 1=1--">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="logPayload" class="form-label">Payload</label>
-                                    <input type="text" class="form-control" id="logPayload" placeholder="id=1 OR 1=1--">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="logMethod" class="form-label">Method</label>
-                                    <select class="form-select" id="logMethod">
-                                        <option value="GET">GET</option>
-                                        <option value="POST">POST</option>
-                                        <option value="PUT">PUT</option>
-                                        <option value="DELETE">DELETE</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="logUserAgent" class="form-label">User Agent</label>
-                                    <input type="text" class="form-control" id="logUserAgent" placeholder="Mozilla/5.0...">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="logStatus" class="form-label">Status</label>
-                                    <input type="number" class="form-control" id="logStatus" placeholder="200">
-                                </div>
+                        <div id="recentThreats">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-shield-alt fa-3x mb-3"></i>
+                                <p>No threats detected yet. Test some payloads above!</p>
                             </div>
                         </div>
-                        <button class="btn btn-custom" onclick="detectSQLi()">
-                            <i class="fas fa-search"></i> Detect SQLi
-                        </button>
-                        <div id="detectionResult" class="mt-3"></div>
                     </div>
                 </div>
             </div>
@@ -341,489 +312,202 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let performanceChart, patternChart;
+        // Global variables
+        let performanceData = {
+            total_logs: 0,
+            sqli_detected: 0,
+            clean_logs: 0,
+            detection_rate: 0.0
+        };
 
-        // Initialize charts
-        function initCharts() {
-            // Performance Chart
-            const perfCtx = document.getElementById('performanceChart').getContext('2d');
-            performanceChart = new Chart(perfCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['SQLi Detected', 'Clean Logs'],
-                    datasets: [{
-                        data: [0, 0],
-                        backgroundColor: ['#ff6b6b', '#2ed573'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPerformance();
+            loadRecentThreats();
+        });
 
-            // Pattern Chart
-            const patternCtx = document.getElementById('patternChart').getContext('2d');
-            patternChart = new Chart(patternCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['Union-based', 'Boolean-based', 'Time-based', 'Obfuscated', 'Drop table', 'Comments', 'Special chars'],
-                    datasets: [{
-                        label: 'Pattern Count',
-                        data: [0, 0, 0, 0, 0, 0, 0],
-                        backgroundColor: ['#ff6b6b', '#ffa502', '#ff6348', '#8e44ad', '#e74c3c', '#95a5a6', '#34495e']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
+        // Test form submission
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            testDetection();
+        });
+
+        function setPayload(name, queryString, payload) {
+            document.getElementById('queryString').value = queryString;
+            document.getElementById('payload').value = payload;
+            document.getElementById('uri').value = '/DVWA/vulnerabilities/sqli/index.php';
         }
 
-        // Load performance data
-        async function loadPerformance() {
-            try {
-                // Force refresh by adding timestamp
-                const response = await fetch('/api/performance?t=' + Date.now());
-                const data = await response.json();
-                
-                console.log('Performance data loaded:', data);
-                
-                document.getElementById('totalLogs').textContent = data.total_logs;
-                document.getElementById('sqliDetected').textContent = data.sqli_detected;
-                document.getElementById('detectionRate').textContent = data.detection_rate.toFixed(2) + '%';
-                // False Positive Rate removed from UI
-                
-                // Update performance chart
-                performanceChart.data.datasets[0].data = [data.sqli_detected, data.clean_logs];
-                performanceChart.update();
-            } catch (error) {
-                console.error('Error loading performance:', error);
-            }
-        }
-
-        // Load pattern data
-        async function loadPatterns() {
-            try {
-                const response = await fetch('/api/patterns');
-                const data = await response.json();
-                
-                const labels = Object.keys(data);
-                const values = Object.values(data);
-                
-                patternChart.data.labels = labels;
-                patternChart.data.datasets[0].data = values;
-                patternChart.update();
-            } catch (error) {
-                console.error('Error loading patterns:', error);
-            }
-        }
-
-        // Load logs
-        async function loadLogs() {
-            document.getElementById('logsLoading').style.display = 'block';
-            document.getElementById('logsContainer').innerHTML = '';
-            
-            try {
-                const response = await fetch('/api/logs');
-                const logs = await response.json();
-                
-                // Filter only SQLi logs
-                const sqliLogs = logs.filter(log => log.is_sqli);
-                
-                if (sqliLogs.length === 0) {
-                    document.getElementById('logsContainer').innerHTML = `
-                        <div class="alert alert-success text-center">
-                            <h5><i class="fas fa-shield-alt"></i> No SQLi Threats Detected</h5>
-                            <p>All analyzed logs are clean and secure</p>
-                        </div>
-                    `;
-                    document.getElementById('logsLoading').style.display = 'none';
-                    return;
-                }
-                
-                let html = '';
-                sqliLogs.forEach((log, index) => {
-                    const logClass = 'log-sqli';
-                    const confidenceClass = log.confidence === 'High' ? 'confidence-high' : 
-                                          log.confidence === 'Medium' ? 'confidence-medium' : 'confidence-low';
-                    
-                    // Threat Level Assessment
-                    let threatLevel = 'MEDIUM';
-                    let threatClass = 'bg-info';
-                    if (log.score < -0.15) {
-                        threatLevel = 'CRITICAL';
-                        threatClass = 'bg-danger';
-                    } else if (log.score < -0.08) {
-                        threatLevel = 'HIGH';
-                        threatClass = 'bg-warning';
-                    }
-                    
-                    let patternsHtml = '';
-                    log.detected_patterns.forEach(pattern => {
-                        const patternClass = pattern.toLowerCase().replace('-based', '').replace(' ', '');
-                        patternsHtml += `<span class="pattern-badge pattern-${patternClass}">${pattern}</span>`;
-                    });
-                    
-                    html += `
-                        <div class="log-entry ${logClass} mb-3">
-                            <div class="card border-danger">
-                                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-exclamation-triangle"></i> SQLi Threat #${index + 1}
-                                        <small class="text-light ms-2">${log.timestamp}</small>
-                                    </h6>
-                                    <div>
-                                        <span class="badge bg-warning text-dark me-2">
-                                            SQLi Detected
-                                        </span>
-                                        <span class="badge ${threatClass}">
-                                            ${threatLevel} Threat
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-8">
-                                            <div class="mb-2">
-                                                <strong>URI:</strong> <code class="text-danger">${log.log.uri || 'N/A'}</code>
-                                            </div>
-                                            <div class="mb-2">
-                                                <strong>Query String:</strong> 
-                                                <code class="text-break text-danger">${log.log.query_string || 'N/A'}</code>
-                                            </div>
-                                            <div class="mb-2">
-                                                <strong>Payload:</strong> 
-                                                <code class="text-break text-danger">${log.log.payload || 'N/A'}</code>
-                                            </div>
-                                            <div class="mb-2">
-                                                <strong>Method:</strong> ${log.log.method || 'N/A'} | 
-                                                <strong>Status:</strong> ${log.log.status || 'N/A'} | 
-                                                <strong>IP:</strong> <span class="text-danger">${log.log.remote_ip || 'N/A'}</span>
-                                            </div>
-                                            <div class="mb-2">
-                                                <strong>User Agent:</strong> 
-                                                <small class="text-muted">${log.log.user_agent || 'N/A'}</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="analysis-results bg-light p-3 rounded">
-                                                <h6><i class="fas fa-shield-alt text-danger"></i> Threat Analysis</h6>
-                                                <div class="mb-2">
-                                                    <span class="badge bg-primary">${log.detection_method || 'AI Detection'}</span>
-                                                </div>
-                                                <div class="mb-2">
-                                                    <span class="badge ${threatClass} text-white">${threatLevel} Threat Level</span>
-                                                </div>
-                                                <div class="mb-2">
-                                                    <strong>Attack Patterns:</strong>
-                                                    <div class="mt-1">${patternsHtml}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                document.getElementById('logsContainer').innerHTML = html;
-            } catch (error) {
-                console.error('Error loading logs:', error);
-                document.getElementById('logsContainer').innerHTML = '<p class="text-danger">Error loading logs</p>';
-            } finally {
-                document.getElementById('logsLoading').style.display = 'none';
-            }
-        }
-
-        // Detect SQLi
-        async function detectSQLi() {
-            const logEntry = {
-                uri: document.getElementById('logUri').value,
-                query_string: document.getElementById('logQuery').value,
-                payload: document.getElementById('logPayload').value,
-                method: document.getElementById('logMethod').value,
-                user_agent: document.getElementById('logUserAgent').value,
-                status: parseInt(document.getElementById('logStatus').value) || 200
+        function testDetection() {
+            const formData = {
+                uri: document.getElementById('uri').value,
+                query_string: document.getElementById('queryString').value,
+                payload: document.getElementById('payload').value,
+                user_agent: document.getElementById('userAgent').value,
+                remote_ip: document.getElementById('remoteIp').value,
+                method: document.getElementById('method').value,
+                status: 200,
+                time: new Date().toISOString()
             };
-            
-            try {
-                const response = await fetch('/api/detect', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(logEntry)
-                });
-                
-                const result = await response.json();
-                
-                let patternsHtml = '';
-                result.detected_patterns.forEach(pattern => {
-                    const patternClass = pattern.toLowerCase().replace('-based', '').replace(' ', '');
-                    patternsHtml += `<span class="pattern-badge pattern-${patternClass}">${pattern}</span>`;
-                });
-                
-                const resultHtml = `
-                    <div class="alert ${result.is_sqli ? 'alert-danger' : 'alert-success'}">
-                        <h5><i class="fas fa-${result.is_sqli ? 'exclamation-triangle' : 'check-circle'}"></i> 
-                        ${result.is_sqli ? 'SQLi Detected!' : 'Clean Log'}</h5>
-                        <p><strong>Score:</strong> ${result.score.toFixed(4)}</p>
-                        <p><strong>Confidence:</strong> <span class="${result.confidence === 'High' ? 'confidence-high' : result.confidence === 'Medium' ? 'confidence-medium' : 'confidence-low'}">${result.confidence}</span></p>
-                        <p><strong>Detected Patterns:</strong> ${patternsHtml}</p>
-                        <p><strong>Timestamp:</strong> ${new Date(result.timestamp).toLocaleString()}</p>
+
+            // Show loading
+            const resultSection = document.getElementById('resultSection');
+            const detectionResult = document.getElementById('detectionResult');
+            resultSection.style.display = 'block';
+            detectionResult.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border spinner-border-custom" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Analyzing payload...</p>
+                </div>
+            `;
+
+            // Send request
+            fetch('/api/detect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                displayResult(data);
+                loadPerformance();
+                loadRecentThreats();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                detectionResult.innerHTML = `
+                    <div class="alert alert-danger alert-custom">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        Error: ${error.message}
                     </div>
                 `;
-                
-                document.getElementById('detectionResult').innerHTML = resultHtml;
-            } catch (error) {
-                console.error('Error detecting SQLi:', error);
-                document.getElementById('detectionResult').innerHTML = '<div class="alert alert-danger">Error detecting SQLi</div>';
-            }
+            });
         }
 
-        // Upload and analyze file
-        async function uploadAndAnalyze() {
-            const fileInput = document.getElementById('logFile');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                alert('Please select a file to upload');
-                return;
-            }
-            
-            // Check file size (100MB limit)
-            if (file.size > 100 * 1024 * 1024) {
-                alert('File too large. Maximum size is 100MB.');
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            try {
-                document.getElementById('uploadResult').innerHTML = `
-                    <div class="alert alert-info">
-                        <div class="d-flex align-items-center">
-                            <div class="spinner-border spinner-border-sm me-2" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <div>
-                                <div>Uploading and analyzing file... (${(file.size / 1024 / 1024).toFixed(2)} MB)</div>
-                                <small class="text-muted">Ultra-fast processing - usually completes in seconds!</small>
-                            </div>
+        function displayResult(data) {
+            const detectionResult = document.getElementById('detectionResult');
+            const isSqli = data.is_sqli;
+            const score = data.score;
+            const patterns = data.patterns;
+            const confidence = data.confidence;
+
+            let alertClass = isSqli ? 'alert-danger' : 'alert-success';
+            let icon = isSqli ? 'fas fa-exclamation-triangle' : 'fas fa-check-circle';
+            let status = isSqli ? 'SQLi DETECTED' : 'CLEAN';
+
+            detectionResult.innerHTML = `
+                <div class="alert ${alertClass} alert-custom">
+                    <h5><i class="${icon} me-2"></i>${status}</h5>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <strong>Score:</strong> ${score.toFixed(3)}<br>
+                            <strong>Confidence:</strong> ${confidence}<br>
+                            <strong>Patterns:</strong> ${patterns ? patterns.join(', ') : 'N/A'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Timestamp:</strong> ${new Date(data.timestamp).toLocaleString()}<br>
+                            <strong>Threshold:</strong> 0.85
                         </div>
                     </div>
-                `;
-                
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData,
-                    signal: AbortSignal.timeout(300000)  // 5 minutes timeout
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    const data = result.results;
-                    let html = `
-                        <div class="alert alert-success">
-                            <h5><i class="fas fa-check-circle"></i> File Analysis Complete!</h5>
-                            <p><strong>Filename:</strong> ${result.filename}</p>
-                            <p><strong>Total Logs:</strong> ${data.total_logs}</p>
-                            <p><strong>SQLi Detected:</strong> ${data.sqli_detected}</p>
-                            <p><strong>Detection Rate:</strong> ${data.detection_rate.toFixed(2)}%</p>
-                        </div>
-                    `;
-                    
-                    // Show first 10 results
-                    if (data.results && data.results.length > 0) {
-                        html += '<h6>Sample Results:</h6>';
-                        html += '<div class="table-responsive"><table class="table table-sm">';
-                        html += '<thead><tr><th>Index</th><th>SQLi</th><th>Score</th><th>Confidence</th><th>Patterns</th></tr></thead><tbody>';
-                        
-                        for (let i = 0; i < Math.min(10, data.results.length); i++) {
-                            const result = data.results[i];
-                            const sqliClass = result.is_sqli ? 'text-danger' : 'text-success';
-                            const confidenceClass = result.confidence === 'High' ? 'confidence-high' : 
-                                                  result.confidence === 'Medium' ? 'confidence-medium' : 'confidence-low';
-                            
-                            html += `
-                                <tr>
-                                    <td>${result.index}</td>
-                                    <td class="${sqliClass}">${result.is_sqli ? 'Yes' : 'No'}</td>
-                                    <td>${result.score.toFixed(4)}</td>
-                                    <td class="${confidenceClass}">${result.confidence}</td>
-                                    <td>${result.detected_patterns.join(', ')}</td>
-                                </tr>
-                            `;
-                        }
-                        
-                        html += '</tbody></table></div>';
-                    }
-                    
-                    document.getElementById('uploadResult').innerHTML = html;
-                    
-                    // Refresh both dashboard and logs after successful upload
-                    setTimeout(() => {
-                        loadPerformance();
-                        loadPatterns();
-                        loadLogs();
-                    }, 1000);
-                } else {
-                    document.getElementById('uploadResult').innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
-                }
-            } catch (error) {
-                console.error('Error uploading file:', error);
-                document.getElementById('uploadResult').innerHTML = '<div class="alert alert-danger">Error uploading file</div>';
-            }
-        }
-
-        // Batch detect multiple logs
-        async function batchDetect(logs) {
-            try {
-                const response = await fetch('/api/batch-detect', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ logs: logs })
-                });
-                
-                const result = await response.json();
-                return result;
-            } catch (error) {
-                console.error('Error in batch detection:', error);
-                return { error: error.message };
-            }
-        }
-
-        // Refresh logs
-        function refreshLogs() {
-            loadLogs();
-        }
-        
-        // Refresh dashboard
-        function refreshDashboard() {
-            loadPerformance();
-            loadPatterns();
-        }
-
-        // Auto-refresh every 60 seconds (reduced frequency for better performance)
-        setInterval(() => {
-            loadPerformance();
-            loadPatterns();
-        }, 60000);
-
-        
-        function testModel() {
-            fetch('/api/performance')
-                .then(response => response.json())
-                .then(data => {
-                    alert(`Model test completed!\nDetection Rate: ${data.detection_rate.toFixed(1)}%`);
-                })
-                .catch(error => {
-                    alert('Model test failed: ' + error);
-                });
-        }
-        
-        function exportLogs() {
-            fetch('/api/logs')
-                .then(response => response.json())
-                .then(data => {
-                    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'sqli_logs.json';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                })
-                .catch(error => {
-                    alert('Export failed: ' + error);
-                });
-        }
-        
-        function clearCache() {
-            if (confirm('Are you sure you want to clear the cache?')) {
-                fetch('/api/clear-cache', {method: 'POST'})
-                    .then(response => response.json())
-                    .then(data => {
-                        alert('Cache cleared successfully!');
-                        loadLogs();
-                    })
-                    .catch(error => {
-                        alert('Cache clear failed: ' + error);
-                    });
-            }
-        }
-        
-        function showEmptyLogs() {
-            document.getElementById('logsLoading').style.display = 'none';
-            document.getElementById('logsContainer').innerHTML = `
-                <div class="alert alert-info text-center">
-                    <h5><i class="fas fa-upload"></i> No Logs Analyzed Yet</h5>
-                    <p>Upload a log file to start AI analysis</p>
-                    <p class="text-muted">Supported formats: JSONL, CSV, TXT (Max 100MB)</p>
-                    <small class="text-success"><i class="fas fa-check"></i> Cache cleared on reload - fresh session</small>
                 </div>
             `;
         }
-        
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            // Clear cache on page reload FIRST
-            clearCacheOnReload();
-            
-            // Initialize charts
-            initCharts();
-            
-            // Don't load data automatically - wait for cache clear
-            setTimeout(() => {
-                loadPerformance();
-                loadPatterns();
-                showEmptyLogs();
-            }, 100); // Small delay to ensure cache is cleared
-        });
-        
-        function clearCacheOnReload() {
-            // Auto-clear cache when page reloads
-            console.log('Clearing cache on page reload...');
-            fetch('/api/clear-cache', {method: 'POST'})
+
+        function loadPerformance() {
+            fetch('/api/performance')
                 .then(response => response.json())
                 .then(data => {
-                    console.log('✅ Cache cleared successfully on reload');
-                    // Force refresh of all data with delay
-                    setTimeout(() => {
-                        loadPerformance();
-                        loadPatterns();
-                        showEmptyLogs();
-                    }, 200); // Longer delay to ensure cache is cleared
+                    performanceData = data;
+                    updatePerformanceMetrics();
+                })
+                .catch(error => console.error('Error loading performance:', error));
+        }
+
+        function updatePerformanceMetrics() {
+            document.getElementById('totalLogs').textContent = performanceData.total_logs || 0;
+            document.getElementById('sqliDetected').textContent = performanceData.sqli_detected || 0;
+            document.getElementById('cleanLogs').textContent = performanceData.clean_logs || 0;
+            document.getElementById('detectionRate').textContent = 
+                ((performanceData.detection_rate || 0) * 100).toFixed(1) + '%';
+        }
+
+        function loadRecentThreats() {
+            fetch('/api/logs')
+                .then(response => response.json())
+                .then(data => {
+                    displayRecentThreats(data);
+                })
+                .catch(error => console.error('Error loading threats:', error));
+        }
+
+        function displayRecentThreats(threats) {
+            const recentThreats = document.getElementById('recentThreats');
+            
+            if (!threats || threats.length === 0) {
+                recentThreats.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-shield-alt fa-3x mb-3"></i>
+                        <p>No threats detected yet. Test some payloads above!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            threats.slice(-10).reverse().forEach(threat => {
+                const log = threat.log;
+                const detection = threat.detection;
+                const timestamp = new Date(threat.timestamp).toLocaleString();
+                
+                html += `
+                    <div class="log-entry sqli">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <strong>IP:</strong> ${log.remote_ip || 'unknown'}<br>
+                                <strong>URI:</strong> ${log.uri || 'unknown'}<br>
+                                <strong>Query:</strong> ${log.query_string || 'N/A'}<br>
+                                <strong>Payload:</strong> ${log.payload || 'N/A'}
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <span class="badge bg-danger">Score: ${detection.score.toFixed(3)}</span><br>
+                                <span class="badge bg-warning">${detection.confidence}</span><br>
+                                <small class="text-muted">${timestamp}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            recentThreats.innerHTML = html;
+        }
+
+        function clearCache() {
+            if (confirm('Are you sure you want to clear all cache?')) {
+                fetch('/api/clear-cache', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Cache cleared successfully!');
+                    loadPerformance();
+                    loadRecentThreats();
                 })
                 .catch(error => {
-                    console.log('❌ Cache clear failed on reload: ' + error);
-                    // Still show empty logs even if cache clear fails
-                    showEmptyLogs();
+                    console.error('Error clearing cache:', error);
+                    alert('Error clearing cache');
                 });
+            }
         }
+
+        // Auto-refresh every 5 seconds
+        setInterval(() => {
+            loadPerformance();
+            loadRecentThreats();
+        }, 5000);
     </script>
 </body>
 </html>
