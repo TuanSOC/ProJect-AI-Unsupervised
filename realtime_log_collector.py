@@ -189,8 +189,8 @@ class RealtimeLogCollector:
             if not query_string and not payload:
                 return False
             
-            # Skip if score is too low
-            if score < 0.6:
+            # Skip if score is too low (but allow some flexibility)
+            if score < 0.5:
                 return False
             
             # Skip common false positive patterns
@@ -204,13 +204,28 @@ class RealtimeLogCollector:
                 if pattern in uri.lower():
                     return False
             
-            # Only detect if has SQLi-like content
+            # Check for SQLi-like content (expanded keywords)
             suspicious_content = query_string + ' ' + payload
-            sql_keywords = ['union', 'select', 'insert', 'update', 'delete', 'drop', 'exec', 'script']
+            sql_keywords = [
+                'union', 'select', 'insert', 'update', 'delete', 'drop', 'exec', 'script',
+                'benchmark', 'sleep', 'waitfor', 'version', 'user', 'database', 'table',
+                'information_schema', 'mysql', 'or 1=1', 'and 1=1', "' or '", '" or "',
+                '--', '/*', '*/', '0x', 'char(', 'ascii(', 'substring', 'concat',
+                'load_file', 'into outfile', 'xp_cmdshell', 'sp_executesql'
+            ]
             
             has_sql_content = any(keyword in suspicious_content.lower() for keyword in sql_keywords)
             
-            return has_sql_content
+            # Also check for suspicious patterns
+            suspicious_patterns = [
+                'or+', 'and+', 'union+', 'select+', 'insert+', 'update+', 'delete+',
+                'benchmark(', 'sleep(', 'waitfor', 'version(', 'user(', 'database(',
+                'information_schema', 'mysql.user', 'load_file(', 'into outfile'
+            ]
+            
+            has_suspicious_patterns = any(pattern in suspicious_content.lower() for pattern in suspicious_patterns)
+            
+            return has_sql_content or has_suspicious_patterns
             
         except Exception as e:
             logger.error(f"Error in threat filtering: {e}")
@@ -255,21 +270,23 @@ class RealtimeLogCollector:
         detection_result = self.detect_sqli_realtime(log_entry)
         
         # Filter false positives: only detect if score > threshold AND has suspicious content
-        if detection_result and detection_result['is_sqli'] and self._is_real_threat(detection_result, log_entry):
-            # Log threat
-            logger.warning(f"🚨 SQLi DETECTED!")
-            logger.warning(f"   IP: {log_entry.get('remote_ip', 'Unknown')}")
-            logger.warning(f"   URI: {log_entry.get('uri', 'Unknown')}")
-            logger.warning(f"   Query: {log_entry.get('query_string', 'None')}")
-            logger.warning(f"   Payload: {log_entry.get('payload', 'None')}")
-            logger.warning(f"   Score: {detection_result['score']:.3f}")
-            logger.warning(f"   Patterns: {detection_result.get('detected_patterns', 'N/A')}")
-            logger.warning(f"   Confidence: {detection_result['confidence']}")
-            logger.warning(f"   Threat Level: {detection_result['threat_level']}")
-            logger.warning("-" * 80)
-            
-            # Gửi đến webhook
-            self.send_to_webhook(log_entry, detection_result)
+        if detection_result and detection_result['is_sqli']:
+            is_real_threat = self._is_real_threat(detection_result, log_entry)
+            if is_real_threat:
+                # Log threat
+                logger.warning(f"🚨 SQLi DETECTED!")
+                logger.warning(f"   IP: {log_entry.get('remote_ip', 'Unknown')}")
+                logger.warning(f"   URI: {log_entry.get('uri', 'Unknown')}")
+                logger.warning(f"   Query: {log_entry.get('query_string', 'None')}")
+                logger.warning(f"   Payload: {log_entry.get('payload', 'None')}")
+                logger.warning(f"   Score: {detection_result['score']:.3f}")
+                logger.warning(f"   Patterns: {detection_result.get('detected_patterns', 'N/A')}")
+                logger.warning(f"   Confidence: {detection_result['confidence']}")
+                logger.warning(f"   Threat Level: {detection_result['threat_level']}")
+                logger.warning("-" * 80)
+                
+                # Gửi đến webhook
+                self.send_to_webhook(log_entry, detection_result)
             
             # Lưu vào file threat log
             self.save_threat_log(log_entry, detection_result)
