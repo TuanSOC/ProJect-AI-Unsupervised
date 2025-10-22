@@ -443,9 +443,18 @@ class OptimizedSQLIDetector:
         
         # Encode categorical features
         for feature in ['method']:
-            if feature in df.columns and feature in self.label_encoders:
-                le = self.label_encoders[feature]
-                df[f'{feature}_encoded'] = le.transform(df[feature].astype(str))
+            if feature in df.columns:
+                if feature in self.label_encoders:
+                    le = self.label_encoders[feature]
+                    try:
+                        df[f'{feature}_encoded'] = le.transform(df[feature].astype(str))
+                    except ValueError as e:
+                        # Handle unseen labels by using default encoding
+                        logger.warning(f"Unseen label in {feature}: {e}")
+                        df[f'{feature}_encoded'] = 1 if df[feature].iloc[0].upper() == 'POST' else 0
+                else:
+                    # Fallback encoding if no label encoder
+                    df[f'{feature}_encoded'] = 1 if df[feature].iloc[0].upper() == 'POST' else 0
         
         # Select features
         X = df[self.feature_names].fillna(0)
