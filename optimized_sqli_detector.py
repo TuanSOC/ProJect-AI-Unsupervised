@@ -441,28 +441,35 @@ class OptimizedSQLIDetector:
         # Create DataFrame
         df = pd.DataFrame([features])
         
-        # Encode categorical features
+        # Encode categorical features (pre-normalize to avoid unseen-label exceptions)
         categorical_features = ['method']
         for feature in categorical_features:
             if feature in df.columns:
+                raw_val = str(df[feature].iloc[0])
+                # Normalize common placeholders
+                if feature == 'method':
+                    norm_val = 'POST' if raw_val.upper() == 'POST' else 'GET'
+                    df.loc[:, feature] = norm_val
+                else:
+                    norm_val = raw_val
+
                 if feature in self.label_encoders:
                     le = self.label_encoders[feature]
-                    try:
+                    classes = set(getattr(le, 'classes_', []))
+                    if norm_val in classes:
                         df[f'{feature}_encoded'] = le.transform(df[feature].astype(str))
-                    except ValueError as e:
-                        # Handle unseen labels by using default encoding
-                        logger.warning(f"Unseen label in {feature}: {e}")
-                        # Use default encoding based on feature type
+                    else:
+                        # Fallback without logging noise
                         if feature == 'method':
-                            df[f'{feature}_encoded'] = 1 if df[feature].iloc[0].upper() == 'POST' else 0
+                            df[f'{feature}_encoded'] = 1 if norm_val == 'POST' else 0
                         else:
-                            df[f'{feature}_encoded'] = 0  # Default fallback
+                            df[f'{feature}_encoded'] = 0
                 else:
                     # Fallback encoding if no label encoder
                     if feature == 'method':
-                        df[f'{feature}_encoded'] = 1 if df[feature].iloc[0].upper() == 'POST' else 0
+                        df[f'{feature}_encoded'] = 1 if norm_val == 'POST' else 0
                     else:
-                        df[f'{feature}_encoded'] = 0  # Default fallback
+                        df[f'{feature}_encoded'] = 0
         
         # Select features
         X = df[self.feature_names].fillna(0)
