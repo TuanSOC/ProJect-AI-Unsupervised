@@ -91,9 +91,9 @@ System is now production-ready with:
 
 if __name__ == "__main__":
     if main():
-        print("\n🎉 System upgrade completed successfully!")
+        print("\n[SUCCESS] System upgrade completed successfully!")
         print("Repository: https://github.com/TuanSOC/ProJect-AI-Unsupervised.git")
         print("Ready for production deployment!")
     else:
-        print("\n❌ Upgrade failed!")
+        print("\n[ERROR] Upgrade failed!")
         sys.exit(1)
