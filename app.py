@@ -1,24 +1,42 @@
 #!/usr/bin/env python3
 """
-AI SQLi Detection Web App
+Improved AI SQLi Detection Web App
+- Thread-safe state management
+- Model caching
+- Concurrent processing
+- Better error handling
+- Performance monitoring
 """
 
 import os
 import json
-import logging
+import threading
+import time
 from datetime import datetime
+from typing import Dict, List, Any, Optional
+from concurrent.futures import ThreadPoolExecutor
+import queue
+import logging
+
 from flask import Flask, request, jsonify, render_template
 from optimized_sqli_detector import OptimizedSQLIDetector
 
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('ai_sqli_detection.log'),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
-# Global variables
+# Global variables with thread safety
 detector = None
+model_cache = {}
+thread_lock = threading.RLock()
+stats_lock = threading.Lock()
 performance_stats = {
     'total_logs': 0,
     'sqli_detected': 0,
@@ -30,28 +48,146 @@ performance_stats = {
 }
 recent_logs = []
 recent_all_logs = []
+max_recent_logs = 100
+max_all_logs = 1000
+
+# Thread pool for concurrent processing
+executor = ThreadPoolExecutor(max_workers=4)
 
 app = Flask(__name__)
 
-def load_detector():
-    """Load AI detector"""
-    global detector
+def load_model_cached(model_path: str = 'models/optimized_sqli_detector.pkl'):
+    """Load model with caching and thread safety"""
+    global detector, model_cache
+    
+    with thread_lock:
+        if model_path in model_cache:
+            logger.info(f"Model loaded from cache: {model_path}")
+            return model_cache[model_path]
+        
+        try:
+            detector = OptimizedSQLIDetector()
+            detector.load_model(model_path)
+            
+            # Cache the model
+            model_cache[model_path] = detector
+            logger.info(f"Model loaded and cached: {model_path}")
+            return detector
+            
+        except Exception as e:
+            logger.error(f"Error loading model: {e}")
+            raise
+
+def update_stats_thread_safe(is_sqli: bool, processing_time: float):
+    """Thread-safe stats update"""
+    global performance_stats
+    
+    with stats_lock:
+        performance_stats['total_logs'] += 1
+        if is_sqli:
+            performance_stats['sqli_detected'] += 1
+        else:
+            performance_stats['clean_logs'] += 1
+        
+        # Update rates
+        if performance_stats['total_logs'] > 0:
+            performance_stats['detection_rate'] = (
+                performance_stats['sqli_detected'] / 
+                performance_stats['total_logs']
+            )
+            performance_stats['false_positive_rate'] = (
+                performance_stats['false_positives'] / 
+                performance_stats['total_logs']
+            )
+        
+        # Update average processing time
+        current_avg = performance_stats['avg_processing_time']
+        total_logs = performance_stats['total_logs']
+        performance_stats['avg_processing_time'] = (
+            (current_avg * (total_logs - 1) + processing_time) / total_logs
+        )
+
+def add_log_thread_safe(log_entry: Dict[str, Any]):
+    """Thread-safe log addition"""
+    global recent_logs, recent_all_logs
+    
+    with thread_lock:
+        # Add to recent logs
+        recent_logs.append(log_entry)
+        if len(recent_logs) > max_recent_logs:
+            recent_logs.pop(0)
+        
+        # Add to all logs
+        recent_all_logs.append(log_entry)
+        if len(recent_all_logs) > max_all_logs:
+            recent_all_logs.pop(0)
+
+def detect_sqli_async(log_entry: Dict[str, Any], model_path: str = 'models/optimized_sqli_detector.pkl'):
+    """Async SQLi detection with performance monitoring"""
+    start_time = time.time()
+    
     try:
-        detector = OptimizedSQLIDetector()
-        detector.load_model('models/optimized_sqli_detector.pkl')
-        logger.info("✅ AI Model loaded successfully!")
+        # Load model (cached)
+        detector = load_model_cached(model_path)
+        
+        # Detect SQLi
+        is_sqli, score, patterns, confidence = detector.predict_single(log_entry, threshold=0.85)
+        
+        processing_time = time.time() - start_time
+        
+        # Update stats
+        update_stats_thread_safe(is_sqli, processing_time)
+        
+        # Create result
+        result = {
+            'timestamp': datetime.now().isoformat(),
+            'log': log_entry,
+            'detection': {
+                'is_sqli': is_sqli,
+                'score': score,
+                'patterns': patterns,
+                'confidence': confidence,
+                'processing_time': processing_time
+            }
+        }
+        
+        # Add to logs
+        add_log_thread_safe(result)
+        
+        # Log detection
+        if is_sqli:
+            logger.warning("🚨 SQLi DETECTED!")
+            logger.warning(f"   IP: {log_entry.get('remote_ip', 'unknown')}")
+            logger.warning(f"   URI: {log_entry.get('uri', 'unknown')}")
+            logger.warning(f"   Score: {score:.3f}")
+            logger.warning(f"   Patterns: {patterns}")
+            logger.warning(f"   Processing time: {processing_time:.3f}s")
+        
+        return result
+        
     except Exception as e:
-        logger.error(f"❌ Error loading AI model: {e}")
-        raise
+        logger.error(f"Error in detection: {e}")
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'log': log_entry,
+            'detection': {
+                'is_sqli': False,
+                'score': 0.0,
+                'patterns': [],
+                'confidence': 'Error',
+                'processing_time': time.time() - start_time,
+                'error': str(e)
+            }
+        }
 
 @app.route('/')
 def index():
-    """Main dashboard"""
-    return render_template('index.html')
+    """Main dashboard with improved UI"""
+    return render_template('improved_dashboard.html')
 
 @app.route('/api/detect', methods=['POST'])
 def detect_sqli():
-    """Detect SQLi in single log entry"""
+    """Improved single detection with async processing"""
     try:
         data = request.get_json()
         if not data:
@@ -59,109 +195,110 @@ def detect_sqli():
         
         # Ensure detector is loaded
         if detector is None:
-            load_detector()
+            load_model_cached()
         
-        # Analyze log entry
-        is_sqli, score, patterns, confidence = detector.predict_single(data, threshold=0.85)
-        
-        # Update statistics
-        performance_stats['total_logs'] += 1
-        if is_sqli:
-            performance_stats['sqli_detected'] += 1
-            # Add to recent logs
-            log_entry = {
-                'timestamp': datetime.now().isoformat(),
-                'log': data,
-                'detection': {
-                    'is_sqli': is_sqli,
-                    'score': score,
-                    'confidence': confidence,
-                    'patterns': patterns
-                }
-            }
-            recent_logs.append(log_entry)
-            # Keep only last 100 entries
-            if len(recent_logs) > 100:
-                recent_logs.pop(0)
-        else:
-            performance_stats['clean_logs'] += 1
-        
-        # Calculate rates
-        if performance_stats['total_logs'] > 0:
-            performance_stats['detection_rate'] = performance_stats['sqli_detected'] / performance_stats['total_logs']
-            performance_stats['false_positive_rate'] = performance_stats['false_positives'] / performance_stats['total_logs']
-        
-        # Add to recent all logs
-        all_log_entry = {
-            'timestamp': datetime.now().isoformat(),
-            'log': data,
-            'detection': {
-                'is_sqli': is_sqli,
-                'score': score,
-                'confidence': confidence,
-                'patterns': patterns
-            }
-        }
-        recent_all_logs.append(all_log_entry)
-        if len(recent_all_logs) > 1000:
-            recent_all_logs.pop(0)
+        # Process detection
+        result = detect_sqli_async(data)
         
         return jsonify({
-            'is_sqli': is_sqli,
-            'score': score,
-            'patterns': patterns,
-            'confidence': confidence,
-            'timestamp': datetime.now().isoformat()
+            'is_sqli': result['detection']['is_sqli'],
+            'score': result['detection']['score'],
+            'patterns': result['detection']['patterns'],
+            'confidence': result['detection']['confidence'],
+            'processing_time': result['detection']['processing_time'],
+            'timestamp': result['timestamp']
         })
         
     except Exception as e:
         logger.error(f"Error in detection: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/batch-detect', methods=['POST'])
+def batch_detect():
+    """Improved batch detection with concurrent processing"""
+    try:
+        data = request.get_json()
+        if not data or 'logs' not in data:
+            return jsonify({'error': 'No logs provided'}), 400
+        
+        # Process batch detection
+        futures = []
+        for log_entry in data['logs']:
+            future = executor.submit(detect_sqli_async, log_entry)
+            futures.append(future)
+        
+        results = []
+        for future in futures:
+            try:
+                result = future.result(timeout=30)  # 30s timeout
+                results.append(result)
+            except Exception as e:
+                logger.error(f"Batch detection error: {e}")
+                results.append({
+                    'timestamp': datetime.now().isoformat(),
+                    'log': {},
+                    'detection': {'error': str(e)}
+                })
+        
+        return jsonify({
+            'results': results,
+            'total_processed': len(results),
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in batch detection: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/performance')
 def get_performance():
-    """Get performance statistics"""
+    """Get performance statistics with thread safety"""
     try:
-        return jsonify(performance_stats)
+        with stats_lock:
+            return jsonify(performance_stats.copy())
     except Exception as e:
         logger.error(f"Error getting performance: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/logs')
 def get_logs():
-    """Get recent threat logs"""
+    """Get recent threat logs with thread safety"""
     try:
-        return jsonify(recent_logs[-50:])  # Return last 50 entries
+        limit = request.args.get('limit', 50, type=int)
+        with thread_lock:
+            logs = recent_logs[-limit:] if recent_logs else []
+        return jsonify(logs)
     except Exception as e:
         logger.error(f"Error getting logs: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/patterns')
 def get_patterns():
-    """Get pattern analysis"""
+    """Get pattern analysis with improved performance"""
     try:
-        if not recent_all_logs:
-            return jsonify({'patterns': [], 'message': 'No data available'})
-        
-        # Analyze patterns from recent logs
-        patterns = {}
-        for log_entry in recent_all_logs[-100:]:  # Last 100 entries
-            detection = log_entry.get('detection', {})
-            if detection.get('is_sqli', False):
-                pattern = detection.get('patterns', 'Unknown')
-                if pattern in patterns:
-                    patterns[pattern] += 1
-                else:
-                    patterns[pattern] = 1
-        
-        # Sort by frequency
-        sorted_patterns = sorted(patterns.items(), key=lambda x: x[1], reverse=True)
-        
-        return jsonify({
-            'patterns': sorted_patterns,
-            'total_threats': len([log for log in recent_all_logs if log.get('detection', {}).get('is_sqli', False)])
-        })
-        
+        with thread_lock:
+            if not recent_all_logs:
+                return jsonify({'patterns': [], 'message': 'No data available'})
+            
+            # Analyze patterns from recent logs
+            patterns = {}
+            for log_entry in recent_all_logs[-100:]:  # Last 100 entries
+                detection = log_entry.get('detection', {})
+                if detection.get('is_sqli', False):
+                    pattern = detection.get('patterns', 'Unknown')
+                    if pattern in patterns:
+                        patterns[pattern] += 1
+                    else:
+                        patterns[pattern] = 1
+            
+            # Sort by frequency
+            sorted_patterns = sorted(patterns.items(), key=lambda x: x[1], reverse=True)
+            
+            return jsonify({
+                'patterns': sorted_patterns,
+                'total_threats': len([log for log in recent_all_logs if log.get('detection', {}).get('is_sqli', False)])
+            })
+            
     except Exception as e:
         logger.error(f"Error getting patterns: {e}")
         return jsonify({'error': str(e)}), 500
@@ -170,19 +307,23 @@ def get_patterns():
 def clear_cache():
     """Clear cache and reset statistics"""
     try:
-        global performance_stats, recent_logs, recent_all_logs
+        global model_cache, performance_stats, recent_logs, recent_all_logs
         
-        performance_stats = {
-            'total_logs': 0,
-            'sqli_detected': 0,
-            'clean_logs': 0,
-            'false_positives': 0,
-            'detection_rate': 0.0,
-            'false_positive_rate': 0.0,
-            'avg_processing_time': 0.0
-        }
-        recent_logs.clear()
-        recent_all_logs.clear()
+        with thread_lock:
+            model_cache.clear()
+            recent_logs.clear()
+            recent_all_logs.clear()
+        
+        with stats_lock:
+            performance_stats = {
+                'total_logs': 0,
+                'sqli_detected': 0,
+                'clean_logs': 0,
+                'false_positives': 0,
+                'detection_rate': 0.0,
+                'false_positive_rate': 0.0,
+                'avg_processing_time': 0.0
+            }
         
         logger.info("Cache cleared and statistics reset")
         return jsonify({'message': 'Cache cleared successfully'})
@@ -193,7 +334,7 @@ def clear_cache():
 
 @app.route('/api/realtime-detect', methods=['GET', 'POST'])
 def realtime_detect():
-    """Realtime detection endpoint"""
+    """Realtime detection endpoint with improved handling"""
     if request.method == 'GET':
         return jsonify({'status': 'Realtime detection endpoint active'})
     
@@ -206,49 +347,41 @@ def realtime_detect():
         log_entry = data.get('log', {})
         detection = data.get('detection', {})
         
-        # Add to recent logs
-        recent_logs.append(data)
-        recent_all_logs.append(data)
+        # Process detection
+        result = detect_sqli_async(log_entry)
         
-        # Keep only last 100 entries
-        if len(recent_logs) > 100:
-            recent_logs.pop(0)
-        if len(recent_all_logs) > 1000:
-            recent_all_logs.pop(0)
-        
-        # Update statistics
-        performance_stats['total_logs'] += 1
-        if detection.get('is_sqli', False):
-            performance_stats['sqli_detected'] += 1
-        else:
-            performance_stats['clean_logs'] += 1
-        
-        # Calculate rates
-        if performance_stats['total_logs'] > 0:
-            performance_stats['detection_rate'] = performance_stats['sqli_detected'] / performance_stats['total_logs']
-            performance_stats['false_positive_rate'] = performance_stats['false_positives'] / performance_stats['total_logs']
-        
-        logger.warning("🚨 REALTIME SQLi DETECTED!")
-        logger.warning(f"   IP: {log_entry.get('remote_ip', 'unknown')}")
-        logger.warning(f"   URI: {log_entry.get('uri', 'unknown')}")
-        logger.warning(f"   Score: {detection.get('score', 0):.3f}")
-        logger.warning(f"   Patterns: {detection.get('patterns', 'N/A')}")
-        
-        return jsonify({'status': 'success', 'message': 'Detection logged'})
+        return jsonify({
+            'status': 'success',
+            'message': 'Detection processed',
+            'is_sqli': result['detection']['is_sqli'],
+            'score': result['detection']['score'],
+            'patterns': result['detection']['patterns'],
+            'confidence': result['detection']['confidence']
+        })
         
     except Exception as e:
         logger.error(f"Error in realtime detection: {e}")
         return jsonify({'error': str(e)}), 500
 
+def shutdown_handler():
+    """Graceful shutdown handler"""
+    logger.info("Shutting down application...")
+    executor.shutdown(wait=True)
+    logger.info("Application shutdown complete")
+
 if __name__ == '__main__':
     try:
         # Load AI model
-        load_detector()
+        load_model_cached()
         
         # Start Flask app
-        logger.info("🚀 Starting AI SQLi Detection Web App...")
+        logger.info("🚀 Starting Improved AI SQLi Detection Web App...")
         logger.info("🌐 Access: http://localhost:5000")
+        logger.info("📊 Features: Thread-safe, Cached, Concurrent processing")
+        
         app.run(debug=False, host='0.0.0.0', port=5000)
         
     except Exception as e:
         logger.error(f"❌ Failed to start app: {e}")
+    finally:
+        shutdown_handler()
