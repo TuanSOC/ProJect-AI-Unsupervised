@@ -460,7 +460,6 @@ class OptimizedSQLIDetector:
         # Convert to anomaly score (0-1, higher = more anomalous)
         # decision_function returns negative values for anomalies
         # Use sigmoid-like transformation for better score interpretation
-        import numpy as np
         anomaly_score = 1 / (1 + np.exp(score))  # Sigmoid transformation
         
         # For SQLi detection, ưu tiên rule-based và risk score trước, rồi đến AI-only
@@ -595,7 +594,7 @@ class OptimizedSQLIDetector:
             # metadata placeholders: percentiles and chosen thresholds
             'metadata': {
                 'score_percentiles': getattr(self, 'score_percentiles', None),
-                'sqli_risk_threshold': getattr(self, 'sqli_risk_threshold', None)
+                'sqli_score_threshold': getattr(self, 'sqli_score_threshold', None)
             }
         }
         dirn = os.path.dirname(model_path)
@@ -638,7 +637,7 @@ def train_optimized_model():
     logger.info(f"📊 Training với {len(clean_logs)} clean logs (source: {data_path})")
     
     # Create optimized detector
-    detector = OptimizedSQLIDetector(contamination=0.2, random_state=42)
+    detector = OptimizedSQLIDetector(contamination=0.01, random_state=42)
     
     # Train
     X_scaled, feature_names = detector.train(clean_logs)
