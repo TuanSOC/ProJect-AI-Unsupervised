@@ -32,7 +32,7 @@ class RealtimeLogCollector:
     
     def __init__(self, log_path="/var/log/apache2/access_full_json.log", 
                  webhook_url="http://localhost:5000/api/realtime-detect",
-                 detection_threshold=0.7):
+                 detection_threshold=0.85):
         self.log_path = log_path
         self.webhook_url = webhook_url
         self.detection_threshold = detection_threshold
@@ -177,6 +177,45 @@ class RealtimeLogCollector:
             self.stats['errors'] += 1
             return None
     
+    def _is_real_threat(self, detection_result, log_entry):
+        """Filter false positives - only detect real threats"""
+        try:
+            score = detection_result.get('score', 0)
+            query_string = log_entry.get('query_string', '')
+            payload = log_entry.get('payload', '')
+            uri = log_entry.get('uri', '')
+            
+            # Skip if no suspicious content
+            if not query_string and not payload:
+                return False
+            
+            # Skip if score is too low
+            if score < 0.6:
+                return False
+            
+            # Skip common false positive patterns
+            false_positive_patterns = [
+                '/css/', '/js/', '/images/', '/favicon.ico',
+                '/robots.txt', '/sitemap.xml', '/.well-known/',
+                '/api/health', '/ping', '/status'
+            ]
+            
+            for pattern in false_positive_patterns:
+                if pattern in uri.lower():
+                    return False
+            
+            # Only detect if has SQLi-like content
+            suspicious_content = query_string + ' ' + payload
+            sql_keywords = ['union', 'select', 'insert', 'update', 'delete', 'drop', 'exec', 'script']
+            
+            has_sql_content = any(keyword in suspicious_content.lower() for keyword in sql_keywords)
+            
+            return has_sql_content
+            
+        except Exception as e:
+            logger.error(f"Error in threat filtering: {e}")
+            return True  # Default to detect if error
+    
     def send_to_webhook(self, log_entry, detection_result):
         """Gửi kết quả phát hiện đến webhook"""
         try:
@@ -215,7 +254,8 @@ class RealtimeLogCollector:
         # Phát hiện SQLi
         detection_result = self.detect_sqli_realtime(log_entry)
         
-        if detection_result and detection_result['is_sqli']:
+        # Filter false positives: only detect if score > threshold AND has suspicious content
+        if detection_result and detection_result['is_sqli'] and self._is_real_threat(detection_result, log_entry):
             # Log threat
             logger.warning(f"🚨 SQLi DETECTED!")
             logger.warning(f"   IP: {log_entry.get('remote_ip', 'Unknown')}")
