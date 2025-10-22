@@ -56,6 +56,34 @@ executor = ThreadPoolExecutor(max_workers=4)
 
 app = Flask(__name__)
 
+# JSON sanitization for numpy/scalar types
+try:
+    import numpy as _np  # optional
+except Exception:  # pragma: no cover
+    _np = None
+
+def _to_serializable(obj):
+    """Recursively convert objects to JSON-serializable python natives.
+    Handles numpy scalars/arrays, sets/tuples, and nested dict/list structures.
+    """
+    # Numpy scalars
+    if _np is not None:
+        if isinstance(obj, (_np.generic,)):
+            return obj.item()
+        if isinstance(obj, (_np.ndarray,)):
+            return obj.tolist()
+    # Basic scalars
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    # Dict
+    if isinstance(obj, dict):
+        return {str(k): _to_serializable(v) for k, v in obj.items()}
+    # List/Tuple/Set
+    if isinstance(obj, (list, tuple, set)):
+        return [_to_serializable(v) for v in obj]
+    # Fallback to string
+    return str(obj)
+
 def load_model_cached(model_path: str = 'models/optimized_sqli_detector.pkl'):
     """Load model with caching and thread safety"""
     global detector, model_cache
@@ -79,7 +107,7 @@ def load_model_cached(model_path: str = 'models/optimized_sqli_detector.pkl'):
             logger.info(f"Model loaded and cached: {model_path}")
             return detector
             
-        except Exception as e:
+    except Exception as e:
             logger.error(f"Error loading model: {e}")
             raise
 
@@ -155,9 +183,12 @@ def detect_sqli_async(log_entry: Dict[str, Any], model_path: str = 'models/optim
                 'processing_time': processing_time
             }
         }
-        
+
+        # Sanitize result for JSON/log storage
+        safe_result = _to_serializable(result)
+
         # Add to logs
-        add_log_thread_safe(result)
+        add_log_thread_safe(safe_result)
         
         # Log detection
         if is_sqli:
@@ -168,7 +199,7 @@ def detect_sqli_async(log_entry: Dict[str, Any], model_path: str = 'models/optim
             logger.warning(f"   Patterns: {patterns}")
             logger.warning(f"   Processing time: {processing_time:.3f}s")
         
-        return result
+        return safe_result
         
     except Exception as e:
         logger.error(f"Error in detection: {e}")
@@ -189,7 +220,7 @@ def detect_sqli_async(log_entry: Dict[str, Any], model_path: str = 'models/optim
 def index():
     """Main dashboard"""
     try:
-        return render_template('index.html')
+    return render_template('index.html')
     except Exception as e:
         logger.error(f"Error loading template: {e}")
         return f"""
@@ -300,7 +331,7 @@ def get_performance():
     """Get performance statistics with thread safety"""
     try:
         with stats_lock:
-            return jsonify(performance_stats.copy())
+            return jsonify(_to_serializable(performance_stats.copy()))
     except Exception as e:
         logger.error(f"Error getting performance: {e}")
         return jsonify({'error': str(e)}), 500
@@ -312,7 +343,7 @@ def get_logs():
         limit = request.args.get('limit', 50, type=int)
         with thread_lock:
             logs = recent_logs[-limit:] if recent_logs else []
-        return jsonify(logs)
+        return jsonify(_to_serializable(logs))
     except Exception as e:
         logger.error(f"Error getting logs: {e}")
         return jsonify({'error': str(e)}), 500
@@ -333,7 +364,7 @@ def get_patterns():
                     pattern = detection.get('patterns', 'Unknown')
                     if pattern in patterns:
                         patterns[pattern] += 1
-                    else:
+        else:
                         patterns[pattern] = 1
             
             # Sort by frequency
