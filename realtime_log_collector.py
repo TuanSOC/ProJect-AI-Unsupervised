@@ -383,7 +383,7 @@ def main():
     collector = RealtimeLogCollector(
         log_path="/var/log/apache2/access_full_json.log",
         webhook_url="http://localhost:5000/api/realtime-detect",
-        detection_threshold=0.7
+        detection_threshold=0.85
     )
     
     # Setup signal handlers

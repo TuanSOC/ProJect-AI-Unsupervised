@@ -19,6 +19,9 @@ import re
 import logging
 import math
 import urllib.parse
+import ipaddress as _ip
+import urllib.parse as _up
+import numpy as np
 
 # Setup logging
 logging.basicConfig(
@@ -42,6 +45,24 @@ def url_decode_safe(s: str) -> str:
         return urllib.parse.unquote_plus(s)
     except Exception:
         return s
+
+def _is_simple_numeric_q(qs: str) -> bool:
+    """Check if query string contains only simple numeric key-value pairs"""
+    if not qs:
+        return False
+    try:
+        pairs = _up.parse_qsl(qs, keep_blank_values=True)
+        if not pairs:
+            return False
+        for k, v in pairs:
+            if k == '' or not k.replace('_','').isalnum():
+                return False
+            # accept negative numbers? usually no; require digits
+            if not v.isdigit():
+                return False
+        return True
+    except Exception:
+        return False
 
 
 def compute_shannon_entropy(s: str) -> float:
@@ -68,7 +89,7 @@ class OptimizedSQLIDetector:
     - n_jobs: số core dùng khi train/predict
     """
 
-    def __init__(self, contamination=0.2, random_state=42, n_estimators=200, max_features=0.8, n_jobs=-1):
+    def __init__(self, contamination=0.01, random_state=42, n_estimators=200, max_features=0.8, n_jobs=-1):
         self.contamination = contamination
         self.random_state = random_state
         self.isolation_forest = IsolationForest(
@@ -121,6 +142,11 @@ class OptimizedSQLIDetector:
         features['response_length'] = log_entry.get('response_length', 0)
         features['bytes_sent'] = log_entry.get('bytes_sent', 0)
         
+        # Method field (critical fix)
+        method = log_entry.get('method', 'GET')
+        features['method'] = method  # Add categorical method
+        features['method_encoded'] = 1 if method.upper() == 'POST' else 0
+        
         # URI analysis
         uri = log_entry.get('uri', '')
         features['uri_length'] = len(uri)
@@ -138,12 +164,13 @@ class OptimizedSQLIDetector:
         features['has_payload'] = 1 if payload else 0
         
         # Enhanced SQLi pattern detection với trọng số cao
-        # Chuẩn hóa nhẹ: url-decode và unescape HTML để lộ pattern bị mã hóa
-        decoded_uri = url_decode_safe(uri)
-        decoded_qs = url_decode_safe(query_string)
-        decoded_payload = url_decode_safe(payload)
-        decoded_body = url_decode_safe(log_entry.get('body', ''))
-        decoded_referer = url_decode_safe(log_entry.get('referer', ''))
+        # Limit input length to avoid ReDoS/OOM
+        MAX_TEXT_LEN = 4096
+        decoded_uri = url_decode_safe(uri)[:MAX_TEXT_LEN]
+        decoded_qs = url_decode_safe(query_string)[:MAX_TEXT_LEN]
+        decoded_payload = url_decode_safe(payload)[:MAX_TEXT_LEN]
+        decoded_body = url_decode_safe(log_entry.get('body', ''))[:MAX_TEXT_LEN]
+        decoded_referer = url_decode_safe(log_entry.get('referer', ''))[:MAX_TEXT_LEN]
         text_content = f"{decoded_uri} {decoded_qs} {decoded_payload} {decoded_body} {decoded_referer}".lower()
         
         # SQLi patterns với scoring nâng cao
@@ -199,9 +226,13 @@ class OptimizedSQLIDetector:
         features['user_agent_length'] = len(user_agent)
         features['is_bot'] = 1 if any(bot in user_agent.lower() for bot in ['bot', 'crawler', 'spider']) else 0
         
-        # IP analysis
+        # IP analysis - use ipaddress for accurate private IP detection
         remote_ip = log_entry.get('remote_ip', '')
-        features['is_internal_ip'] = 1 if remote_ip.startswith(('192.168.', '10.', '172.')) else 0
+        try:
+            ip_obj = _ip.ip_address(remote_ip.split(':')[0])
+            features['is_internal_ip'] = 1 if ip_obj.is_private else 0
+        except Exception:
+            features['is_internal_ip'] = 0
         
         # Cookie analysis - Enhanced for SQLi detection
         cookie = log_entry.get('cookie', '')
@@ -291,27 +322,33 @@ class OptimizedSQLIDetector:
         cookie_quotes_capped = min(features['cookie_quotes'], 10)
         cookie_operators_capped = min(features['cookie_operators'], 5)
 
+        # Normalize cookie_length factor
+        cookie_len = max(features.get('cookie_length', 0), 1)
+        cookie_norm = cookie_len / 100.0  # convert to relative scale
+        
         risk_score = (
-            features['sqli_patterns'] * 2 +
+            features['sqli_patterns'] * 2.0 +
             features['special_chars'] * 0.5 +
             features['sql_keywords'] * 1.5 +
-            features['has_union_select'] * 5 +
-            features['has_information_schema'] * 4 +
-            features['has_mysql_functions'] * 3 +
-            features['has_boolean_blind'] * 4 +
-            features['has_time_based'] * 3 +
-            features['has_comment_injection'] * 2 +
-            # Cookie-based risk factors (enhanced for 100% detection)
-            cookie_sqli_patterns_capped * 20 +
-            cookie_special_chars_capped * 1.0 +
-            cookie_sql_keywords_capped * 8.0 +
-            cookie_quotes_capped * 4.0 +
-            cookie_operators_capped * 2.0 +
-            # Entropy boosts (vừa phải)
+            features['has_union_select'] * 5.0 +
+            features['has_information_schema'] * 4.0 +
+            features['has_mysql_functions'] * 3.0 +
+            features['has_boolean_blind'] * 4.0 +
+            features['has_time_based'] * 3.0 +
+            features['has_comment_injection'] * 2.0 +
+            # Reduced cookie impact and normalized
+            cookie_sqli_patterns_capped * 4.0 / max(1.0, cookie_norm) +
+            cookie_special_chars_capped * 0.5 +
+            cookie_sql_keywords_capped * 2.0 +
+            cookie_quotes_capped * 1.0 +
+            cookie_operators_capped * 1.0 +
+            # Entropy boosts
             min(features['query_entropy'], 8.0) * 0.8 +
             min(features['payload_entropy'], 8.0) * 1.0
         )
-        features['sqli_risk_score'] = risk_score
+        # Store normalized risk, and optional log-scale
+        features['sqli_risk_score'] = float(risk_score)
+        features['sqli_risk_score_log'] = math.log1p(risk_score)
         
         return features
     
@@ -360,6 +397,17 @@ class OptimizedSQLIDetector:
         # Train Isolation Forest
         logger.info("Training Isolation Forest...")
         self.isolation_forest.fit(X_scaled)
+        
+        # Calculate percentiles for threshold selection
+        logger.info("Calculating score percentiles...")
+        scores = self.isolation_forest.decision_function(X_scaled)
+        percentiles = {p: float(np.percentile(scores, p)) for p in [50,90,95,97.5,99,99.5]}
+        self.score_percentiles = percentiles
+        logger.info(f"Score percentiles: {percentiles}")
+        
+        # Recommended anomaly threshold: score <= percentile value (since anomalies negative)
+        self.sqli_score_threshold = float(np.percentile(scores, 99))  # 99th percentile
+        logger.info(f"Recommended anomaly threshold: {self.sqli_score_threshold}")
         
         self.is_trained = True
         logger.info("✅ Optimized model trained successfully!")
@@ -490,8 +538,7 @@ class OptimizedSQLIDetector:
         safe_text = is_safe_text(text_content)
 
         # Nếu query đơn giản kiểu id=number (và không có pattern mạnh) → coi là sạch
-        simple_q = url_decode_safe(raw_qs).lower().strip()
-        is_simple_kv_numeric = bool(re.fullmatch(r"[a-z0-9_]+=\d+(?:&[a-z0-9_]+=\d+)*", simple_q))
+        is_simple_kv_numeric = _is_simple_numeric_q(raw_qs)
 
         # Quyết định cuối cùng
         if has_sqli_pattern or high_risk:
@@ -530,12 +577,13 @@ class OptimizedSQLIDetector:
                 res = self.predict_single(log, threshold=threshold)
             except Exception as e:
                 logger.warning(f"predict_batch error: {e}")
-                res = (False, 0.0)
+                # maintain tuple structure: (is_anomaly, score, patterns, confidence)
+                res = (False, 0.0, [], "Error")
             results.append(res)
         return results
     
     def save_model(self, model_path):
-        """Save trained model"""
+        """Save trained model with metadata"""
         model_data = {
             'isolation_forest': self.isolation_forest,
             'scaler': self.scaler,
@@ -543,9 +591,16 @@ class OptimizedSQLIDetector:
             'feature_names': self.feature_names,
             'is_trained': self.is_trained,
             'contamination': self.contamination,
-            'random_state': self.random_state
+            'random_state': self.random_state,
+            # metadata placeholders: percentiles and chosen thresholds
+            'metadata': {
+                'score_percentiles': getattr(self, 'score_percentiles', None),
+                'sqli_risk_threshold': getattr(self, 'sqli_risk_threshold', None)
+            }
         }
-        
+        dirn = os.path.dirname(model_path)
+        if dirn:
+            os.makedirs(dirn, exist_ok=True)
         joblib.dump(model_data, model_path)
         logger.info(f"✅ Optimized model saved to {model_path}")
     
