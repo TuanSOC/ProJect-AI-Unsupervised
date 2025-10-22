@@ -219,7 +219,7 @@ def detect_sqli_async(log_entry: Dict[str, Any], model_path: str = 'models/optim
 def index():
     """Main dashboard"""
     try:
-    return render_template('index.html')
+        return render_template('index.html')
     except Exception as e:
         logger.error(f"Error loading template: {e}")
         return f"""
@@ -363,7 +363,7 @@ def get_patterns():
                     pattern = detection.get('patterns', 'Unknown')
                     if pattern in patterns:
                         patterns[pattern] += 1
-        else:
+                    else:
                         patterns[pattern] = 1
             
             # Sort by frequency
