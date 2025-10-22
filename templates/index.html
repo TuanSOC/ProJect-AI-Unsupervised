@@ -136,7 +136,7 @@
             <div class="navbar-nav ms-auto">
                 <button class="btn btn-outline-danger btn-sm" onclick="clearCache()">
                     <i class="fas fa-trash me-1"></i> Clear Cache
-                </button>
+            </button>
             </div>
         </div>
     </nav>
@@ -176,17 +176,17 @@
                                         <input type="text" class="form-control" id="uri" 
                                                placeholder="/DVWA/vulnerabilities/sqli/index.php" 
                                                value="/DVWA/vulnerabilities/sqli/index.php">
-                                    </div>
-                                </div>
+                            </div>
+                        </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="queryString" class="form-label">Query String</label>
                                         <input type="text" class="form-control" id="queryString" 
                                                placeholder="?id=1&Submit=Submit" 
                                                value="?id=1&Submit=Submit">
-                                    </div>
-                                </div>
-                            </div>
+                    </div>
+                </div>
+            </div>
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
@@ -194,37 +194,37 @@
                                         <input type="text" class="form-control" id="payload" 
                                                placeholder="id=1&Submit=Submit" 
                                                value="id=1&Submit=Submit">
-                                    </div>
-                                </div>
+        </div>
+                    </div>
                                 <div class="col-md-6">
-                                    <div class="mb-3">
+                        <div class="mb-3">
                                         <label for="userAgent" class="form-label">User Agent</label>
                                         <input type="text" class="form-control" id="userAgent" 
                                                placeholder="Mozilla/5.0..." 
                                                value="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
+                    </div>
+                </div>
+            </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
                                         <label for="remoteIp" class="form-label">Remote IP</label>
                                         <input type="text" class="form-control" id="remoteIp" 
                                                placeholder="192.168.1.100" 
                                                value="192.168.1.100">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="method" class="form-label">Method</label>
-                                        <select class="form-control" id="method">
-                                            <option value="GET">GET</option>
-                                            <option value="POST">POST</option>
-                                        </select>
-                                    </div>
                                 </div>
                             </div>
-                            <div class="mb-3">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                        <label for="method" class="form-label">Method</label>
+                                        <select class="form-control" id="method">
+                                        <option value="GET">GET</option>
+                                        <option value="POST">POST</option>
+                                    </select>
+                                </div>
+                                </div>
+                                </div>
+                                <div class="mb-3">
                                 <label class="form-label">Quick Test Payloads:</label>
                                 <div class="btn-group" role="group">
                                     <button type="button" class="btn btn-outline-primary btn-sm" onclick="setPayload('Normal', '?id=1&Submit=Submit', 'id=1&Submit=Submit')">Normal</button>
@@ -235,12 +235,12 @@
                             </div>
                             <button type="submit" class="btn btn-custom">
                                 <i class="fas fa-search me-2"></i>Test Detection
-                            </button>
+                        </button>
                         </form>
-                    </div>
                 </div>
             </div>
         </div>
+    </div>
 
         <!-- Detection Result -->
         <div class="row mb-4" id="resultSection" style="display: none;">
@@ -257,7 +257,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+                        </div>
 
         <!-- Performance Metrics -->
         <div class="row mb-4">
@@ -265,27 +265,27 @@
                 <div class="metric-card">
                     <div class="metric-value" id="totalLogs">0</div>
                     <div class="metric-label">Total Logs</div>
-                </div>
-            </div>
+                                    </div>
+                                </div>
             <div class="col-md-3">
                 <div class="metric-card sqli-detected">
                     <div class="metric-value" id="sqliDetected">0</div>
                     <div class="metric-label">SQLi Detected</div>
-                </div>
-            </div>
+                                            </div>
+                                            </div>
             <div class="col-md-3">
                 <div class="metric-card clean-log">
                     <div class="metric-value" id="cleanLogs">0</div>
                     <div class="metric-label">Clean Logs</div>
-                </div>
-            </div>
+                                            </div>
+                                            </div>
             <div class="col-md-3">
                 <div class="metric-card">
                     <div class="metric-value" id="detectionRate">0%</div>
                     <div class="metric-label">Detection Rate</div>
-                </div>
-            </div>
-        </div>
+                                            </div>
+                                        </div>
+                                                </div>
 
         <!-- Recent Threats -->
         <div class="row">
@@ -296,19 +296,19 @@
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             Recent Threats
                         </h4>
-                    </div>
+                                                </div>
                     <div class="card-body">
                         <div id="recentThreats">
                             <div class="text-center text-muted">
                                 <i class="fas fa-shield-alt fa-3x mb-3"></i>
                                 <p>No threats detected yet. Test some payloads above!</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -360,9 +360,9 @@
                         <span class="visually-hidden">Loading...</span>
                     </div>
                     <p class="mt-2">Analyzing payload...</p>
-                </div>
-            `;
-
+                    </div>
+                `;
+                
             // Send request
             fetch('/api/detect', {
                 method: 'POST',
@@ -407,13 +407,13 @@
                             <strong>Score:</strong> ${score.toFixed(3)}<br>
                             <strong>Confidence:</strong> ${confidence}<br>
                             <strong>Patterns:</strong> ${patterns ? patterns.join(', ') : 'N/A'}
-                        </div>
+                            </div>
                         <div class="col-md-6">
                             <strong>Timestamp:</strong> ${new Date(data.timestamp).toLocaleString()}<br>
                             <strong>Threshold:</strong> 0.85
+                            </div>
                         </div>
                     </div>
-                </div>
             `;
         }
 
@@ -484,28 +484,28 @@
 
             recentThreats.innerHTML = html;
         }
-
+        
         function clearCache() {
             if (confirm('Are you sure you want to clear all cache?')) {
                 fetch('/api/clear-cache', {
                     method: 'POST'
                 })
-                .then(response => response.json())
-                .then(data => {
-                    alert('Cache cleared successfully!');
+                    .then(response => response.json())
+                    .then(data => {
+                        alert('Cache cleared successfully!');
                     loadPerformance();
                     loadRecentThreats();
-                })
-                .catch(error => {
+                    })
+                    .catch(error => {
                     console.error('Error clearing cache:', error);
                     alert('Error clearing cache');
-                });
+                    });
             }
         }
-
+        
         // Auto-refresh every 5 seconds
         setInterval(() => {
-            loadPerformance();
+                loadPerformance();
             loadRecentThreats();
         }, 5000);
     </script>

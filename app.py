@@ -66,6 +66,11 @@ def load_model_cached(model_path: str = 'models/optimized_sqli_detector.pkl'):
             return model_cache[model_path]
         
         try:
+            # Check if model file exists
+            if not os.path.exists(model_path):
+                logger.error(f"Model file not found: {model_path}")
+                raise FileNotFoundError(f"Model file not found: {model_path}")
+            
             detector = OptimizedSQLIDetector()
             detector.load_model(model_path)
             
@@ -74,7 +79,7 @@ def load_model_cached(model_path: str = 'models/optimized_sqli_detector.pkl'):
             logger.info(f"Model loaded and cached: {model_path}")
             return detector
             
-        except Exception as e:
+    except Exception as e:
             logger.error(f"Error loading model: {e}")
             raise
 
@@ -182,8 +187,48 @@ def detect_sqli_async(log_entry: Dict[str, Any], model_path: str = 'models/optim
 
 @app.route('/')
 def index():
-    """Main dashboard with improved UI"""
-    return render_template('improved_dashboard.html')
+    """Main dashboard"""
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        logger.error(f"Error loading template: {e}")
+        return f"""
+        <html>
+        <head><title>AI SQLi Detection</title></head>
+        <body>
+            <h1>AI SQLi Detection System</h1>
+            <p>Template not found. Please check templates/index.html</p>
+            <p>Error: {e}</p>
+            <h2>API Endpoints:</h2>
+            <ul>
+                <li>POST /api/detect - Test SQLi detection</li>
+                <li>GET /api/performance - Get performance stats</li>
+                <li>GET /api/logs - Get recent logs</li>
+                <li>GET /api/patterns - Get pattern analysis</li>
+            </ul>
+        </body>
+        </html>
+        """, 200
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint"""
+    try:
+        # Check if model is loaded
+        model_status = "loaded" if detector is not None else "not loaded"
+        
+        return jsonify({
+            'status': 'healthy',
+            'model_status': model_status,
+            'timestamp': datetime.now().isoformat(),
+            'version': '2.0'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
 
 @app.route('/api/detect', methods=['POST'])
 def detect_sqli():
@@ -288,7 +333,7 @@ def get_patterns():
                     pattern = detection.get('patterns', 'Unknown')
                     if pattern in patterns:
                         patterns[pattern] += 1
-                    else:
+        else:
                         patterns[pattern] = 1
             
             # Sort by frequency
@@ -298,7 +343,7 @@ def get_patterns():
                 'patterns': sorted_patterns,
                 'total_threats': len([log for log in recent_all_logs if log.get('detection', {}).get('is_sqli', False)])
             })
-            
+        
     except Exception as e:
         logger.error(f"Error getting patterns: {e}")
         return jsonify({'error': str(e)}), 500
