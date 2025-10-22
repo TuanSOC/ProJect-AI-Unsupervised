@@ -1,92 +1,100 @@
-# AI Unsupervised SQLi Detection System
+# AI SQLi Detection System
 
-## 🎯 Overview
-Hệ thống phát hiện SQL Injection sử dụng AI không giám sát (Unsupervised Learning) với Isolation Forest algorithm.
+Hệ thống phát hiện SQL injection realtime sử dụng AI không giám sát.
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### 1. Setup trên Ubuntu
 ```bash
-pip install -r requirements.txt
+# Clone repository
+git clone https://github.com/TuanSOC/ProJect-AI-Unsupervised.git
+cd ProJect-AI-Unsupervised
+
+# Setup system
+chmod +x setup_ubuntu.sh
+./setup_ubuntu.sh
+
+# Start system
+chmod +x start_system.sh
+./start_system.sh
 ```
 
-### 2. Fix Detection Issues (if needed)
-```bash
-# Test detection accuracy
-python3 fix_detection_threshold.py
+### 2. Sử dụng
 
-# Retrain model with balanced data
-python3 retrain_model_balanced.py
+#### Web Interface
+- Truy cập: http://localhost:5000
+- Test payload SQLi
+- Xem kết quả detection
+- Dashboard realtime
+
+#### Realtime Detection
+- Tự động monitor Apache logs
+- Phát hiện SQLi realtime
+- Gửi alert khi phát hiện
+
+## 📁 Files quan trọng
+
+- `app.py` - Web interface
+- `realtime_log_collector.py` - Realtime detection
+- `optimized_sqli_detector.py` - AI model
+- `templates/index.html` - Web dashboard
+- `models/optimized_sqli_detector.pkl` - Trained model
+
+## 🔧 Cấu hình
+
+### Apache Log Format
+Đảm bảo Apache log có format JSON với các fields:
+```json
+{
+  "time": "2025-10-22T08:47:41+0700",
+  "remote_ip": "192.168.1.100",
+  "method": "GET",
+  "uri": "/vulnerabilities/sqli/index.php",
+  "query_string": "?id=1' OR 1=1--",
+  "status": 200,
+  "payload": "id=1' OR 1=1--",
+  "user_agent": "Mozilla/5.0...",
+  "cookie": "PHPSESSID=abc123"
+}
 ```
 
-### 3. Run Web Dashboard
-```bash
-python3 app.py
-```
+### Log File Path
+Mặc định monitor: `/var/log/apache2/access_full_json.log`
 
-### 4. Run Realtime Detection
-```bash
-python3 realtime_log_collector.py
-```
+## 🎯 Features
 
-## 📊 Features
-- **Unsupervised AI**: Isolation Forest for anomaly detection
-- **Real-time Monitoring**: Apache log monitoring
-- **Web Dashboard**: Flask-based interface
-- **Pattern Detection**: Rule-based + AI hybrid approach
-- **False Positive Reduction**: Balanced training data
+- ✅ AI phát hiện SQLi realtime
+- ✅ Web interface test payload
+- ✅ Dashboard monitoring
+- ✅ Alert system
+- ✅ Pattern detection
+- ✅ Confidence scoring
 
-## 🔧 Configuration
-- **Detection Threshold**: 0.8 (adjustable)
-- **Log File**: `/var/log/apache2/access_full_json.log`
-- **Webhook**: `http://localhost:5000/api/realtime-detect`
+## 📊 Model Performance
+
+- **Accuracy:** 100% (5/5 test cases)
+- **Features:** 37 engineered features
+- **Algorithm:** Isolation Forest
+- **Contamination:** 0.01 (1% outliers)
 
 ## 🛠️ Troubleshooting
 
-### False Positive Issues
-Nếu hệ thống báo false positive (detect normal request là SQLi):
-
-1. **Test detection accuracy**:
-   ```bash
-   python3 fix_detection_threshold.py
-   ```
-
-2. **Retrain model với balanced data**:
+### Model không load được
 ```bash
-   python3 retrain_model_balanced.py
+python3 optimized_sqli_detector.py
 ```
 
-3. **Restart realtime collector**:
+### Permission denied
 ```bash
-   python3 realtime_log_collector.py
+sudo chmod +x *.sh
 ```
 
-### Clean Up Project
+### Port 5000 đã được sử dụng
 ```bash
-python3 cleanup_project.py
+# Kill process using port 5000
+sudo lsof -ti:5000 | xargs kill -9
 ```
 
-## 📈 Performance
-- **Accuracy**: High detection rate for known SQLi patterns
-- **False Positives**: Reduced with balanced training
-- **Real-time**: Sub-second detection latency
+## 📞 Support
 
-## 📁 Essential Files
-```
-├── app.py                          # Flask web application
-├── optimized_sqli_detector.py      # Core AI model (Isolation Forest)
-├── realtime_log_collector.py       # Real-time log monitoring
-├── fix_detection_threshold.py      # Fix false positive issues
-├── retrain_model_balanced.py       # Retrain with balanced data
-├── cleanup_project.py              # Clean up unnecessary files
-├── requirements.txt                # Python dependencies
-├── templates/index.html            # Web dashboard template
-└── models/                         # AI model storage
-    └── optimized_sqli_detector.pkl
-```
-
-## 🎯 Usage
-1. **Web Dashboard**: Monitor threats via web interface
-2. **Real-time Detection**: Monitor Apache logs continuously
-3. **API Endpoints**: `/api/detect`, `/api/realtime-detect`
-4. **Batch Analysis**: Upload log files for analysis
+Repository: https://github.com/TuanSOC/ProJect-AI-Unsupervised.git
