@@ -167,7 +167,8 @@ class RealtimeLogCollector:
             return {
                 'is_sqli': bool(is_anomaly),
                 'score': float(score),
-                'confidence': 'High' if abs(score) > 0.8 else 'Medium' if abs(score) > 0.6 else 'Low',
+                'detected_patterns': patterns if patterns else 'N/A',
+                'confidence': confidence,
                 'timestamp': datetime.now().isoformat(),
                 'threat_level': 'CRITICAL' if is_anomaly else 'NONE'
             }
