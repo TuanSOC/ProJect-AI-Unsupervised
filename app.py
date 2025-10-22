@@ -106,8 +106,7 @@ def load_model_cached(model_path: str = 'models/optimized_sqli_detector.pkl'):
             model_cache[model_path] = detector
             logger.info(f"Model loaded and cached: {model_path}")
             return detector
-            
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Error loading model: {e}")
             raise
 
