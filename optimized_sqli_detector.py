@@ -22,6 +22,7 @@ import urllib.parse
 import ipaddress as _ip
 import urllib.parse as _up
 import numpy as np
+import base64
 
 # Setup logging
 logging.basicConfig(
@@ -45,6 +46,104 @@ def url_decode_safe(s: str) -> str:
         return urllib.parse.unquote_plus(s)
     except Exception:
         return s
+
+def base64_decode_safe(s: str) -> str:
+    """
+    Safely decode base64 string with comprehensive error handling
+    
+    Fixes common Base64 issues:
+    - Missing padding (=)
+    - URL-encoded Base64 characters (%2B, %2F, %3D)
+    - Large strings (>4096 chars) - skip to avoid performance issues
+    - Invalid characters - return original string
+    - Unicode decode errors - return original string
+    """
+    try:
+        # Skip very large strings to avoid performance issues
+        if len(s) > 4096:
+            return s
+            
+        s = s.strip()
+        if not s:
+            return s
+            
+        # Handle URL-encoded Base64 characters
+        s = s.replace('%2B', '+').replace('%2F', '/').replace('%3D', '=')
+        
+        # Check if string contains only valid Base64 characters
+        valid_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=')
+        if not all(c in valid_chars for c in s):
+            return s
+            
+        # Add padding if missing (but not too much)
+        missing_padding = len(s) % 4
+        if missing_padding:
+            s += '=' * (4 - missing_padding)
+            
+        # Decode Base64
+        decoded_bytes = base64.b64decode(s, validate=True)
+        
+        # Try to decode as UTF-8, fallback to original if fails
+        try:
+            decoded_str = decoded_bytes.decode('utf-8', errors='strict')
+            # Only return decoded string if it's actually different and meaningful
+            if decoded_str != s and len(decoded_str) > 0:
+                return decoded_str
+            else:
+                return s
+        except UnicodeDecodeError:
+            return s
+            
+    except Exception:
+        # Return original string if any error occurs
+        return s
+
+def is_base64_string(s: str) -> bool:
+    """
+    Check if string looks like base64 with improved validation
+    
+    Enhanced checks:
+    - Minimum length requirement
+    - Valid Base64 character set
+    - Proper length (multiple of 4)
+    - Not too long (performance)
+    - Contains meaningful Base64 patterns
+    """
+    if not s or len(s) < 4:
+        return False
+        
+    # Skip very large strings
+    if len(s) > 4096:
+        return False
+        
+    try:
+        # Base64 characters: A-Z, a-z, 0-9, +, /, =
+        base64_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=')
+        
+        # Check if all characters are valid Base64
+        if not all(c in base64_chars for c in s):
+            return False
+            
+        # Check if length is reasonable for Base64 (multiple of 4, or close)
+        if len(s) % 4 not in [0, 1, 2, 3]:
+            return False
+            
+        # Check if string contains meaningful Base64 patterns (not just random chars)
+        # Base64 typically has a good mix of different character types
+        has_upper = any(c.isupper() for c in s)
+        has_lower = any(c.islower() for c in s)
+        has_digit = any(c.isdigit() for c in s)
+        has_special = any(c in '+/' for c in s)
+        
+        # If it has at least 3 different character types, it's likely Base64
+        char_types = sum([has_upper, has_lower, has_digit, has_special])
+        if char_types < 3:
+            return False
+            
+        return True
+        
+    except Exception:
+        return False
 
 def _is_simple_numeric_q(qs: str) -> bool:
     """Check if query string contains only simple numeric key-value pairs"""
@@ -171,7 +270,55 @@ class OptimizedSQLIDetector:
         decoded_payload = url_decode_safe(payload)[:MAX_TEXT_LEN]
         decoded_body = url_decode_safe(log_entry.get('body', ''))[:MAX_TEXT_LEN]
         decoded_referer = url_decode_safe(log_entry.get('referer', ''))[:MAX_TEXT_LEN]
-        text_content = f"{decoded_uri} {decoded_qs} {decoded_payload} {decoded_body} {decoded_referer}".lower()
+        
+        # Base64 decoding for enhanced detection
+        base64_decoded_content = ""
+        # Try to decode payload if it looks like base64
+        if payload and len(payload) > 4:
+            # Extract Base64 part from payload (e.g., "data=JyBPUiAxPTEtLQ==" -> "JyBPUiAxPTEtLQ==")
+            if '=' in payload:
+                # Split by first '=' to get the Base64 part
+                parts = payload.split('=', 1)  # Split only on first '='
+                if len(parts) > 1:
+                    base64_part = parts[1]  # Get the part after the first '='
+                    if len(base64_part) > 4:
+                        decoded_payload = base64_decode_safe(base64_part)
+                        if decoded_payload != base64_part:  # Only if actually decoded
+                            base64_decoded_content += decoded_payload
+            else:
+                # If no '=' in payload, try to decode the whole payload
+                decoded_payload = base64_decode_safe(payload)
+                if decoded_payload != payload:  # Only if actually decoded
+                    base64_decoded_content += decoded_payload
+        # Try to decode query string if it looks like base64
+        if query_string and len(query_string) > 4:
+            # Extract Base64 part from query string
+            if '=' in query_string:
+                # Split by first '=' to get the Base64 part
+                parts = query_string.split('=', 1)  # Split only on first '='
+                if len(parts) > 1:
+                    base64_part = parts[1]  # Get the part after the first '='
+                    if len(base64_part) > 4:
+                        decoded_query = base64_decode_safe(base64_part)
+                        if decoded_query != base64_part:  # Only if actually decoded
+                            base64_decoded_content += " " + decoded_query
+            else:
+                # If no '=' in query string, try to decode the whole query string
+                decoded_query = base64_decode_safe(query_string)
+                if decoded_query != query_string:  # Only if actually decoded
+                    base64_decoded_content += " " + decoded_query
+        
+        # Additional URL decoding for better pattern detection
+        double_decoded_uri = url_decode_safe(decoded_uri)
+        double_decoded_qs = url_decode_safe(decoded_qs)
+        double_decoded_payload = url_decode_safe(decoded_payload)
+        
+        # Triple decoding for double-encoded content
+        triple_decoded_uri = url_decode_safe(double_decoded_uri)
+        triple_decoded_qs = url_decode_safe(double_decoded_qs)
+        triple_decoded_payload = url_decode_safe(double_decoded_payload)
+        
+        text_content = f"{decoded_uri} {decoded_qs} {decoded_payload} {decoded_body} {decoded_referer} {base64_decoded_content} {double_decoded_uri} {double_decoded_qs} {double_decoded_payload} {triple_decoded_uri} {triple_decoded_qs} {triple_decoded_payload}".lower()
         
         # SQLi patterns với scoring nâng cao
         sqli_patterns = [
@@ -182,7 +329,11 @@ class OptimizedSQLIDetector:
             'cast(', 'concat(', 'char(', 'ascii(',
             'substring(', 'mid(', 'substr(',
             '--', '/*', '*/', '; drop', '; delete',
-            'xor ', 'exec', 'execute', 'version()', 'user()', 'database()'
+            'xor ', 'exec', 'execute', 'version()', 'user()', 'database()',
+            # Additional patterns for better detection
+            'or 1=1--', "or '1'='1--", 'and 1=1--', "and '1'='1--",
+            'or 1=1#', "or '1'='1#", 'and 1=1#', "and '1'='1#",
+            'or 1=1/*', "or '1'='1/*", 'and 1=1/*', "and '1'='1/*"
         ]
         
         # Tính điểm SQLi với trọng số
@@ -192,7 +343,7 @@ class OptimizedSQLIDetector:
                 # Trọng số cao cho các pattern nguy hiểm
                 if pattern in ['union', 'select', 'information_schema', 'mysql.']:
                     sqli_score += 3
-                elif pattern in ['or 1=1', "or '1'='1", 'and 1=1', "and '1'='1"]:
+                elif pattern in ['or 1=1', "or '1'='1", 'and 1=1', "and '1'='1", 'or 1=1--', "or '1'='1--", 'and 1=1--', "and '1'='1--", 'or 1=1#', "or '1'='1#", 'and 1=1#', "and '1'='1#", 'or 1=1/*', "or '1'='1/*", 'and 1=1/*', "and '1'='1/*"]:
                     sqli_score += 2
                 else:
                     sqli_score += 1
@@ -244,6 +395,40 @@ class OptimizedSQLIDetector:
         features['cookie_special_chars'] = 0
         features['cookie_sql_keywords'] = 0
         features['cookie_quotes'] = 0
+        
+        # Base64 detection features - Enhanced logic
+        features['has_base64_payload'] = 0
+        features['has_base64_query'] = 0
+        
+        # Check payload for Base64
+        if payload and len(payload) > 4:
+            if '=' in payload:
+                # Extract Base64 part from payload (e.g., "data=JyBPUiAxPTEtLQ==" -> "JyBPUiAxPTEtLQ==")
+                parts = payload.split('=', 1)
+                if len(parts) > 1:
+                    base64_part = parts[1].split('&')[0]  # Get part before any '&'
+                    if len(base64_part) > 4 and base64_decode_safe(base64_part) != base64_part:
+                        features['has_base64_payload'] = 1
+            else:
+                # If no '=' in payload, try to decode the whole payload
+                if base64_decode_safe(payload) != payload:
+                    features['has_base64_payload'] = 1
+        
+        # Check query string for Base64
+        if query_string and len(query_string) > 4:
+            if '=' in query_string:
+                # Extract Base64 part from query string
+                parts = query_string.split('=', 1)
+                if len(parts) > 1:
+                    base64_part = parts[1].split('&')[0]  # Get part before any '&'
+                    if len(base64_part) > 4 and base64_decode_safe(base64_part) != base64_part:
+                        features['has_base64_query'] = 1
+            else:
+                # If no '=' in query string, try to decode the whole query string
+                if base64_decode_safe(query_string) != query_string:
+                    features['has_base64_query'] = 1
+        features['base64_decoded_length'] = len(base64_decoded_content)
+        features['base64_sqli_patterns'] = 0
         features['cookie_operators'] = 0
         
         if cookie:
@@ -276,6 +461,71 @@ class OptimizedSQLIDetector:
             for op in compare_ops:
                 features['cookie_operators'] += cookie_l.count(op)
         
+        # Base64 SQLi pattern detection - Enhanced approach
+        features['base64_sqli_patterns'] = 0
+        
+        # Check for Base64 SQLi patterns in decoded content
+        if base64_decoded_content:
+            base64_lower = base64_decoded_content.lower()
+            sql_patterns = ['union', 'select', 'drop', 'insert', 'update', 'delete', 'or 1=1', 'and 1=1', '--', '/*', '*/']
+            for pattern in sql_patterns:
+                if pattern in base64_lower:
+                    features['base64_sqli_patterns'] += 1
+        
+        # Also check individual Base64 parts from payload and query
+        if features['has_base64_payload'] and payload and '=' in payload:
+            parts = payload.split('=', 1)
+            if len(parts) > 1:
+                base64_part = parts[1].split('&')[0]
+                decoded_payload = base64_decode_safe(base64_part)
+                if decoded_payload != base64_part:
+                    decoded_lower = decoded_payload.lower()
+                    sql_patterns = ['union', 'select', 'drop', 'insert', 'update', 'delete', 'or 1=1', 'and 1=1', '--', '/*', '*/']
+                    for pattern in sql_patterns:
+                        if pattern in decoded_lower:
+                            features['base64_sqli_patterns'] += 1
+        
+        if features['has_base64_query'] and query_string and '=' in query_string:
+            parts = query_string.split('=', 1)
+            if len(parts) > 1:
+                base64_part = parts[1].split('&')[0]
+                decoded_query = base64_decode_safe(base64_part)
+                if decoded_query != base64_part:
+                    decoded_lower = decoded_query.lower()
+                    sql_patterns = ['union', 'select', 'drop', 'insert', 'update', 'delete', 'or 1=1', 'and 1=1', '--', '/*', '*/']
+                    for pattern in sql_patterns:
+                        if pattern in decoded_lower:
+                            features['base64_sqli_patterns'] += 1
+        
+        # NoSQL injection detection
+        features['has_nosql_patterns'] = 0
+        nosql_patterns = ['$where', '$ne', '$gt', '$regex', '$or', '$and', '$exists', '$in', '$nin', '$all', '$elemMatch']
+        for pattern in nosql_patterns:
+            if pattern in text_content:
+                features['has_nosql_patterns'] += 1
+        
+        # Additional NoSQL detection features
+        features['has_nosql_operators'] = 0
+        nosql_operators = ['$eq', '$lt', '$lte', '$gte', '$not', '$nor', '$and', '$or', '$all', '$elemMatch', '$size', '$type']
+        for op in nosql_operators:
+            if op in text_content:
+                features['has_nosql_operators'] += 1
+        
+        # JSON injection patterns
+        features['has_json_injection'] = 0
+        json_patterns = ['{"$', '":', '": "', '": true', '": false', '": null', '": [', '": {']
+        for pattern in json_patterns:
+            if pattern in text_content:
+                features['has_json_injection'] += 1
+        
+        # Overlong UTF-8 detection
+        features['has_overlong_utf8'] = 0
+        overlong_utf8_patterns = ['%c0%ae', '%c1%9c', '%c0%af', '%c1%9d', '%c0%80', '%c1%80']
+        for pattern in overlong_utf8_patterns:
+            if pattern in text_content:
+                features['has_overlong_utf8'] = 1
+                break
+        
         # Security level
         features['security_level'] = 1 if 'security=low' in cookie else 0
         
@@ -301,7 +551,7 @@ class OptimizedSQLIDetector:
         features['has_union_select'] = 1 if 'union' in text_content and 'select' in text_content else 0
         features['has_information_schema'] = 1 if 'information_schema' in text_content else 0
         features['has_mysql_functions'] = 1 if any(func in text_content for func in ['user()', 'database()', 'version()']) else 0
-        features['has_boolean_blind'] = 1 if any(pattern in text_content for pattern in ['or 1=1', 'and 1=1', "or '1'='1"]) else 0
+        features['has_boolean_blind'] = 1 if any(pattern in text_content for pattern in ['or 1=1', 'and 1=1', "or '1'='1", "and '1'='1"]) else 0
         features['has_time_based'] = 1 if any(func in text_content for func in ['sleep(', 'waitfor', 'benchmark']) else 0
         features['has_comment_injection'] = 1 if any(comment in text_content for comment in ['--', '/*', '*/']) else 0
         
@@ -327,21 +577,31 @@ class OptimizedSQLIDetector:
         cookie_norm = cookie_len / 100.0  # convert to relative scale
         
         risk_score = (
-            features['sqli_patterns'] * 2.0 +
-            features['special_chars'] * 0.5 +
+            features['sqli_patterns'] * 3.0 +  # Increased weight
+            features['special_chars'] * 1.0 +  # Increased weight
             features['sql_keywords'] * 1.5 +
             features['has_union_select'] * 5.0 +
             features['has_information_schema'] * 4.0 +
             features['has_mysql_functions'] * 3.0 +
-            features['has_boolean_blind'] * 4.0 +
+            features['has_boolean_blind'] * 6.0 +  # Increased weight for boolean blind
             features['has_time_based'] * 3.0 +
             features['has_comment_injection'] * 2.0 +
-            # Reduced cookie impact and normalized
-            cookie_sqli_patterns_capped * 4.0 / max(1.0, cookie_norm) +
-            cookie_special_chars_capped * 0.5 +
-            cookie_sql_keywords_capped * 2.0 +
-            cookie_quotes_capped * 1.0 +
-            cookie_operators_capped * 1.0 +
+            # Base64 SQLi patterns - HIGH WEIGHT
+            features['base64_sqli_patterns'] * 8.0 +
+            features['has_base64_payload'] * 3.0 +
+            features['has_base64_query'] * 3.0 +
+        # NoSQL injection patterns - EXTREMELY HIGH WEIGHT
+        features['has_nosql_patterns'] * 15.0 +
+        features['has_nosql_operators'] * 8.0 +
+        features['has_json_injection'] * 5.0 +
+        # Overlong UTF-8 patterns - EXTREMELY HIGH WEIGHT
+        features['has_overlong_utf8'] * 20.0 +
+            # Cookie features - INCREASED WEIGHT for better detection
+            cookie_sqli_patterns_capped * 8.0 / max(1.0, cookie_norm) +  # Increased from 6.0
+            cookie_special_chars_capped * 2.0 +  # Increased from 1.0
+            cookie_sql_keywords_capped * 4.0 +  # Increased from 3.0
+            cookie_quotes_capped * 3.0 +  # Increased from 2.0
+            cookie_operators_capped * 3.0 +  # Increased from 2.0
             # Entropy boosts
             min(features['query_entropy'], 8.0) * 0.8 +
             min(features['payload_entropy'], 8.0) * 1.0
@@ -380,10 +640,11 @@ class OptimizedSQLIDetector:
             'sqli_patterns', 'special_chars', 'sql_keywords', 'user_agent_length',
             'is_bot', 'is_internal_ip', 'cookie_length', 'has_session',
             'cookie_sqli_patterns', 'cookie_special_chars', 'cookie_sql_keywords',
-            'cookie_quotes', 'cookie_operators', 'security_level', 'hour', 
-            'day_of_week', 'is_weekend', 'has_union_select', 'has_information_schema', 
+            'cookie_quotes', 'cookie_operators', 'security_level', 'hour',
+            'day_of_week', 'is_weekend', 'has_union_select', 'has_information_schema',
             'has_mysql_functions', 'has_boolean_blind', 'has_time_based', 
-            'has_comment_injection', 'sqli_risk_score', 'method_encoded'
+            'has_comment_injection', 'sqli_risk_score', 'method_encoded',
+            'has_overlong_utf8'
         ]
         
         # Filter to existing columns
@@ -406,7 +667,7 @@ class OptimizedSQLIDetector:
         logger.info(f"Score percentiles: {percentiles}")
         
         # Recommended anomaly threshold: score <= percentile value (since anomalies negative)
-        self.sqli_score_threshold = float(np.percentile(scores, 99))  # 99th percentile
+        self.sqli_score_threshold = float(np.percentile(scores, 50))  # 50th percentile for balanced sensitivity
         logger.info(f"Recommended anomaly threshold: {self.sqli_score_threshold}")
         
         self.is_trained = True
@@ -427,10 +688,14 @@ class OptimizedSQLIDetector:
                     continue
         self.train(clean_logs)
     
-    def predict_single(self, log_entry, threshold=0.49):
+    def predict_single(self, log_entry, threshold=None):
         """Predict single log entry với threshold tối ưu"""
         if not self.is_trained:
             raise ValueError("Model chưa được train!")
+        
+        # Use model threshold if not specified
+        if threshold is None:
+            threshold = self.sqli_score_threshold
         
         # Extract features
         features = self.extract_optimized_features(log_entry)
@@ -481,10 +746,9 @@ class OptimizedSQLIDetector:
         # Isolation Forest: negative scores = anomalies, positive scores = normal
         score = self.isolation_forest.decision_function(X_scaled)[0]
         
-        # Convert to anomaly score (0-1, higher = more anomalous)
+        # Use raw decision_function score for threshold comparison
         # decision_function returns negative values for anomalies
-        # Use sigmoid-like transformation for better score interpretation
-        anomaly_score = 1 / (1 + np.exp(score))  # Sigmoid transformation
+        anomaly_score = score
         
         # For SQLi detection, ưu tiên rule-based và risk score trước, rồi đến AI-only
         # Check for SQLi patterns in all text fields (đã url-decode để lộ pattern)
@@ -574,9 +838,9 @@ class OptimizedSQLIDetector:
                 is_anomaly = False
             else:
                 # Dùng AI-only với ngưỡng cân bằng để giảm FP nhưng vẫn detect được threats
-                # Slightly more sensitive default AI threshold
-                ai_threshold = threshold if threshold != 0.49 else 0.80
-                is_anomaly = anomaly_score > ai_threshold
+                # Use model threshold for decision_function (negative values = anomalies)
+                # For decision_function: negative scores = anomalies, positive scores = normal
+                is_anomaly = anomaly_score < 0  # Only detect if score is negative (anomaly)
         
         # Determine patterns found
         patterns = []
@@ -594,7 +858,9 @@ class OptimizedSQLIDetector:
         else:
             confidence = "Low"
         
-        return is_anomaly, anomaly_score, patterns, confidence
+        # Return results with normalized score (0-1, higher = more anomalous)
+        normalized_score = 1 / (1 + np.exp(anomaly_score))  # Sigmoid transformation for display
+        return is_anomaly, normalized_score, patterns, confidence
 
     def predict_batch(self, logs, threshold=0.49):
         """Dự đoán theo lô để tăng tốc khi kiểm nhiều bản ghi trên API."""
@@ -642,6 +908,12 @@ class OptimizedSQLIDetector:
         self.is_trained = model_data['is_trained']
         self.contamination = model_data['contamination']
         self.random_state = model_data['random_state']
+        
+        # Load metadata if available
+        if 'metadata' in model_data:
+            metadata = model_data['metadata']
+            self.score_percentiles = metadata.get('score_percentiles', None)
+            self.sqli_score_threshold = metadata.get('sqli_score_threshold', None)
         
         logger.info(f"✅ Optimized model loaded from {model_path}")
         return model_data
