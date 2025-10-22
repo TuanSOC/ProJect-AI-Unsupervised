@@ -1,0 +1,62 @@
+{
+  "best_threshold": 0.5,
+  "best_f1_score": 1.0,
+  "pr_auc": 1.0,
+  "roc_auc": 1.0,
+  "threshold_analysis": {
+    "0.3": {
+      "precision": 0.625,
+      "recall": 1.0,
+      "f1_score": 0.7692307692307693,
+      "accuracy": 0.625
+    },
+    "0.4": {
+      "precision": 0.625,
+      "recall": 1.0,
+      "f1_score": 0.7692307692307693,
+      "accuracy": 0.625
+    },
+    "0.5": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "accuracy": 1.0
+    },
+    "0.6": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "accuracy": 0.375
+    },
+    "0.7": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "accuracy": 0.375
+    },
+    "0.8": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "accuracy": 0.375
+    },
+    "0.85": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "accuracy": 0.375
+    },
+    "0.9": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "accuracy": 0.375
+    },
+    "0.95": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "accuracy": 0.375
+    }
+  }
+}

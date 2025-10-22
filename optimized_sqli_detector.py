@@ -548,7 +548,8 @@ class OptimizedSQLIDetector:
                 is_anomaly = False
             else:
                 # Dùng AI-only với ngưỡng cân bằng để giảm FP nhưng vẫn detect được threats
-                is_anomaly = anomaly_score > 0.85
+                ai_threshold = threshold if threshold != 0.49 else 0.85
+                is_anomaly = anomaly_score > ai_threshold
         
         # Determine patterns found
         patterns = []
@@ -616,6 +617,7 @@ class OptimizedSQLIDetector:
         self.random_state = model_data['random_state']
         
         logger.info(f"✅ Optimized model loaded from {model_path}")
+        return model_data
 
 def train_optimized_model():
     """Train optimized model"""
@@ -644,6 +646,18 @@ def train_optimized_model():
     
     # Save model
     detector.save_model('models/optimized_sqli_detector.pkl')
+    
+    # Save metadata to JSON for easy reference
+    metadata = {
+        "score_percentiles": getattr(detector, "score_percentiles", None),
+        "sqli_score_threshold": getattr(detector, "sqli_score_threshold", None),
+        "feature_names": detector.feature_names,
+        "contamination": detector.contamination,
+        "random_state": detector.random_state
+    }
+    with open("models/optimized_sqli_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+    logger.info("🧾 Saved model metadata to models/optimized_sqli_metadata.json")
     
     logger.info("🎉 Optimized model training completed!")
     return detector
