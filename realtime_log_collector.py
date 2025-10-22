@@ -162,7 +162,7 @@ class RealtimeLogCollector:
             
         try:
             # Sử dụng AI model để phát hiện
-            is_anomaly, score = self.detector.predict_single(log_entry, threshold=self.detection_threshold)
+            is_anomaly, score, patterns, confidence = self.detector.predict_single(log_entry, threshold=self.detection_threshold)
             
             return {
                 'is_sqli': bool(is_anomaly),
