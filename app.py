@@ -79,7 +79,7 @@ def load_model_cached(model_path: str = 'models/optimized_sqli_detector.pkl'):
             logger.info(f"Model loaded and cached: {model_path}")
             return detector
             
-    except Exception as e:
+        except Exception as e:
             logger.error(f"Error loading model: {e}")
             raise
 
@@ -333,7 +333,7 @@ def get_patterns():
                     pattern = detection.get('patterns', 'Unknown')
                     if pattern in patterns:
                         patterns[pattern] += 1
-        else:
+                    else:
                         patterns[pattern] = 1
             
             # Sort by frequency
