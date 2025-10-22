@@ -149,7 +149,7 @@ def detect_sqli():
 @app.route('/api/realtime-detect', methods=['GET', 'POST'])
 def realtime_detect():
     """Realtime detection endpoint"""
-    global recent_logs, recent_all_logs
+    global recent_logs, recent_all_logs, performance_stats
     
     if request.method == 'GET':
         return jsonify({'status': 'Realtime detection endpoint active'})

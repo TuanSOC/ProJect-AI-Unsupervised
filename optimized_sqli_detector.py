@@ -504,7 +504,23 @@ class OptimizedSQLIDetector:
                 # Dùng AI-only với ngưỡng cân bằng để giảm FP nhưng vẫn detect được threats
                 is_anomaly = anomaly_score > 0.85
         
-        return is_anomaly, anomaly_score
+        # Determine patterns found
+        patterns = []
+        if has_sqli_pattern:
+            # Find which patterns were matched
+            for keyword in sqli_keywords:
+                if keyword in text_content:
+                    patterns.append(keyword)
+        
+        # Determine confidence level
+        if has_sqli_pattern:
+            confidence = "High"
+        elif anomaly_score > 0.8:
+            confidence = "Medium"
+        else:
+            confidence = "Low"
+        
+        return is_anomaly, anomaly_score, patterns, confidence
 
     def predict_batch(self, logs, threshold=0.49):
         """Dự đoán theo lô để tăng tốc khi kiểm nhiều bản ghi trên API."""
