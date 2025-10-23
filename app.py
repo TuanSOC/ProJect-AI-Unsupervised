@@ -163,7 +163,7 @@ def detect_sqli_async(log_entry: Dict[str, Any], model_path: str = 'models/optim
         detector = load_model_cached(model_path)
         
         # Detect SQLi
-        is_sqli, score, patterns, confidence = detector.predict_single(log_entry, threshold=0.85)
+        is_sqli, score, patterns, confidence = detector.predict_single(log_entry)
         
         processing_time = time.time() - start_time
         

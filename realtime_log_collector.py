@@ -32,7 +32,7 @@ class RealtimeLogCollector:
     
     def __init__(self, log_path="/var/log/apache2/access_full_json.log", 
                  webhook_url="http://localhost:5000/api/realtime-detect",
-                 detection_threshold=0.85):
+                 detection_threshold=None):
         self.log_path = log_path
         self.webhook_url = webhook_url
         self.detection_threshold = detection_threshold
@@ -72,7 +72,7 @@ class RealtimeLogCollector:
             features = self.detector.extract_optimized_features(log_entry)
             
             # Sử dụng AI model để phát hiện
-            is_anomaly, score, patterns, confidence = self.detector.predict_single(log_entry, threshold=self.detection_threshold)
+            is_anomaly, score, patterns, confidence = self.detector.predict_single(log_entry)
             
             # Calculate detailed scores
             detailed_scores = self._calculate_detailed_scores(features)
@@ -709,7 +709,7 @@ class RealtimeLogCollector:
                 return False
             
             # Skip if score is too low (but allow some flexibility)
-            if score < 0.5:
+            if score < 0.3:
                 return False
             
             # Skip common false positive patterns
