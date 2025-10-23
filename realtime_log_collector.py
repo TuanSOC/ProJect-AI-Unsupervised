@@ -855,39 +855,25 @@ class RealtimeLogCollector:
                     line = f.readline()
                     if line:
                         try:
-                            # Parse log entry with better error handling
+                            # Parse log entry with robust parsing
                             line = line.strip()
                             if not line:
                                 continue
                                 
-                            # Try to parse JSON
-                            log_entry = json.loads(line)
+                            # Use robust parsing with multiple fallback strategies
+                            log_entry = self._parse_log_line_robust(line)
                             
-                            # Process log entry
                             if log_entry:
+                                # Process log entry
                                 self.process_log_line(log_entry)
+                            else:
+                                logger.warning(f"Could not parse log line, skipping: {line[:100]}...")
+                                continue
                                 
-                        except json.JSONDecodeError as e:
-                            # Try to fix common JSON issues
-                            fixed_line = self._fix_json_line(line)
-                            if fixed_line != line:
-                                try:
-                                    log_entry = json.loads(fixed_line)
-                                    if log_entry:
-                                        self.process_log_line(log_entry)
-                                        logger.info(f"Fixed malformed JSON and processed log")
-                                        continue
-                                except:
-                                    pass
-                            
-                            # Log malformed JSON but continue processing
-                            logger.warning(f"Malformed JSON in log line: {str(e)[:100]}...")
-                            # Log first 200 chars of problematic line for debugging
+                        except Exception as e:
+                            logger.warning(f"Error processing log line: {str(e)[:100]}...")
                             logger.warning(f"Problematic line: {line[:200]}...")
                             continue
-                        except Exception as e:
-                            logger.warning(f"Error reading log line: {e}")
-                            time.sleep(0.1)
                             
         except FileNotFoundError:
             logger.error(f"❌ Log file not found: {self.log_path}")
@@ -951,6 +937,68 @@ class RealtimeLogCollector:
             return line
         except Exception:
             return line
+    
+    def _parse_log_line_robust(self, line):
+        """Robustly parse log line with multiple fallback strategies"""
+        try:
+            # Strategy 1: Try direct JSON parsing
+            return json.loads(line.strip())
+        except json.JSONDecodeError:
+            pass
+        
+        try:
+            # Strategy 2: Fix common JSON issues
+            fixed_line = self._fix_json_line(line)
+            return json.loads(fixed_line)
+        except json.JSONDecodeError:
+            pass
+        
+        try:
+            # Strategy 3: Extract key fields manually if JSON parsing fails
+            return self._extract_fields_manually(line)
+        except Exception:
+            return None
+    
+    def _extract_fields_manually(self, line):
+        """Extract fields manually when JSON parsing fails"""
+        try:
+            # Extract common fields using regex patterns
+            patterns = {
+                'time': r'"time":\s*"([^"]*)"',
+                'remote_ip': r'"remote_ip":\s*"([^"]*)"',
+                'method': r'"method":\s*"([^"]*)"',
+                'uri': r'"uri":\s*"([^"]*)"',
+                'query_string': r'"query_string":\s*"([^"]*)"',
+                'status': r'"status":\s*(\d+)',
+                'bytes_sent': r'"bytes_sent":\s*(\d+)',
+                'response_time_ms': r'"response_time_ms":\s*(\d+)',
+                'referer': r'"referer":\s*"([^"]*)"',
+                'user_agent': r'"user_agent":\s*"([^"]*)"',
+                'request_length': r'"request_length":\s*(\d+)',
+                'response_length': r'"response_length":\s*(\d+)',
+                'cookie': r'"cookie":\s*"([^"]*)"',
+                'payload': r'"payload":\s*"([^"]*)"',
+                'session_token': r'"session_token":\s*"([^"]*)"'
+            }
+            
+            log_entry = {}
+            for field, pattern in patterns.items():
+                match = re.search(pattern, line)
+                if match:
+                    if field in ['status', 'bytes_sent', 'response_time_ms', 'request_length', 'response_length']:
+                        log_entry[field] = int(match.group(1))
+                    else:
+                        log_entry[field] = match.group(1)
+                else:
+                    # Set default values
+                    if field in ['status', 'bytes_sent', 'response_time_ms', 'request_length', 'response_length']:
+                        log_entry[field] = 0
+                    else:
+                        log_entry[field] = ""
+            
+            return log_entry
+        except Exception:
+            return None
     
     def stop_monitoring(self):
         """Dừng monitoring"""
