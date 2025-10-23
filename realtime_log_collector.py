@@ -16,6 +16,7 @@ import queue
 import signal
 import sys
 import numpy as np
+import re
 
 # Setup logging
 logging.basicConfig(
@@ -867,8 +868,22 @@ class RealtimeLogCollector:
                                 self.process_log_line(log_entry)
                                 
                         except json.JSONDecodeError as e:
+                            # Try to fix common JSON issues
+                            fixed_line = self._fix_json_line(line)
+                            if fixed_line != line:
+                                try:
+                                    log_entry = json.loads(fixed_line)
+                                    if log_entry:
+                                        self.process_log_line(log_entry)
+                                        logger.info(f"Fixed malformed JSON and processed log")
+                                        continue
+                                except:
+                                    pass
+                            
                             # Log malformed JSON but continue processing
                             logger.warning(f"Malformed JSON in log line: {str(e)[:100]}...")
+                            # Log first 200 chars of problematic line for debugging
+                            logger.warning(f"Problematic line: {line[:200]}...")
                             continue
                         except Exception as e:
                             logger.warning(f"Error reading log line: {e}")
@@ -884,6 +899,28 @@ class RealtimeLogCollector:
             logger.error(f"❌ Error in log monitoring: {e}")
         finally:
             self.stop_monitoring()
+    
+    def _fix_json_line(self, line):
+        """Try to fix common JSON parsing issues"""
+        try:
+            # Remove trailing commas before closing braces/brackets
+            line = re.sub(r',(\s*[}\]])', r'\1', line)
+            
+            # Fix unterminated strings by adding quotes
+            line = re.sub(r'"([^"]*?)(?=\s*[,}\]])', r'"\1"', line)
+            
+            # Fix missing commas between key-value pairs
+            line = re.sub(r'([^,}\]])\s*([}\]])', r'\1,\2', line)
+            
+            # Fix missing values (add null)
+            line = re.sub(r':\s*([,}\]])', r': null\1', line)
+            
+            # Remove duplicate commas
+            line = re.sub(r',+', ',', line)
+            
+            return line
+        except Exception:
+            return line
     
     def stop_monitoring(self):
         """Dừng monitoring"""
