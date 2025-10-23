@@ -709,7 +709,7 @@ class RealtimeLogCollector:
                 return False
             
             # Skip if score is too low (but allow some flexibility)
-            if score < 0.3:
+            if score < 0.2:  # Lowered threshold
                 return False
             
             # Skip common false positive patterns
@@ -723,6 +723,24 @@ class RealtimeLogCollector:
                 if pattern in uri.lower():
                     return False
             
+            # Get features to check for advanced patterns
+            features = self.detector.extract_optimized_features(log_entry)
+            
+            # Check for advanced SQLi patterns
+            has_advanced_patterns = (
+                features.get('has_union_select', 0) == 1 or
+                features.get('has_information_schema', 0) == 1 or
+                features.get('has_mysql_functions', 0) == 1 or
+                features.get('has_boolean_blind', 0) == 1 or
+                features.get('has_time_based', 0) == 1 or
+                features.get('has_comment_injection', 0) == 1 or
+                features.get('base64_sqli_patterns', 0) > 0 or
+                features.get('has_nosql_patterns', 0) == 1 or
+                features.get('has_nosql_operators', 0) == 1 or
+                features.get('has_json_injection', 0) == 1 or
+                features.get('has_overlong_utf8', 0) == 1
+            )
+            
             # Check for SQLi-like content (expanded keywords)
             suspicious_content = query_string + ' ' + payload
             sql_keywords = [
@@ -730,7 +748,12 @@ class RealtimeLogCollector:
                 'benchmark', 'sleep', 'waitfor', 'version', 'user', 'database', 'table',
                 'information_schema', 'mysql', 'or 1=1', 'and 1=1', "' or '", '" or "',
                 '--', '/*', '*/', '0x', 'char(', 'ascii(', 'substring', 'concat',
-                'load_file', 'into outfile', 'xp_cmdshell', 'sp_executesql'
+                'load_file', 'into outfile', 'xp_cmdshell', 'sp_executesql',
+                # Add more patterns for better detection
+                '%c0%ae', '%c1%9c', '%c0%af', '%c1%9d',  # Overlong UTF-8
+                'base64', 'encoded', 'urlencoded', 'double encoded',
+                'nosql', 'mongodb', '$where', '$ne', '$gt', '$regex',
+                'json', 'javascript', 'eval', 'function'
             ]
             
             has_sql_content = any(keyword in suspicious_content.lower() for keyword in sql_keywords)
@@ -739,12 +762,23 @@ class RealtimeLogCollector:
             suspicious_patterns = [
                 'or+', 'and+', 'union+', 'select+', 'insert+', 'update+', 'delete+',
                 'benchmark(', 'sleep(', 'waitfor', 'version(', 'user(', 'database(',
-                'information_schema', 'mysql.user', 'load_file(', 'into outfile'
+                'information_schema', 'mysql.user', 'load_file(', 'into outfile',
+                # Add more patterns
+                '%c0%ae', '%c1%9c', '%c0%af', '%c1%9d',
+                'base64', 'encoded', 'urlencoded', 'double encoded'
             ]
             
             has_suspicious_patterns = any(pattern in suspicious_content.lower() for pattern in suspicious_patterns)
             
-            return has_sql_content or has_suspicious_patterns
+            # Check risk score
+            risk_score = features.get('sqli_risk_score', 0)
+            has_high_risk = risk_score >= 30  # Lowered threshold
+            
+            # Return True if any condition is met
+            return (has_sql_content or 
+                   has_suspicious_patterns or 
+                   has_advanced_patterns or 
+                   has_high_risk)
             
         except Exception as e:
             logger.error(f"Error in threat filtering: {e}")
