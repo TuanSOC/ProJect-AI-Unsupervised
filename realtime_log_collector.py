@@ -15,6 +15,7 @@ from optimized_sqli_detector import OptimizedSQLIDetector
 import queue
 import signal
 import sys
+import numpy as np
 
 # Setup logging
 logging.basicConfig(
@@ -709,7 +710,15 @@ class RealtimeLogCollector:
                 return False
             
             # Skip if score is too low (but allow some flexibility)
-            if score < 0.2:  # Lowered threshold
+            # Model returns normalized score (0-1, higher = more anomalous)
+            # Use model's trained threshold for normalized score
+            model_threshold = 0.5  # Default normalized threshold
+            if hasattr(self.detector, 'sqli_score_threshold') and self.detector.sqli_score_threshold:
+                # Convert raw threshold to normalized score
+                raw_threshold = self.detector.sqli_score_threshold
+                model_threshold = 1 / (1 + np.exp(-raw_threshold))  # Sigmoid transformation
+            
+            if score < model_threshold:
                 return False
             
             # Skip common false positive patterns
@@ -845,13 +854,22 @@ class RealtimeLogCollector:
                     line = f.readline()
                     if line:
                         try:
-                            # Parse log entry
-                            log_entry = json.loads(line.strip())
+                            # Parse log entry with better error handling
+                            line = line.strip()
+                            if not line:
+                                continue
+                                
+                            # Try to parse JSON
+                            log_entry = json.loads(line)
                             
                             # Process log entry
                             if log_entry:
                                 self.process_log_line(log_entry)
                                 
+                        except json.JSONDecodeError as e:
+                            # Log malformed JSON but continue processing
+                            logger.warning(f"Malformed JSON in log line: {str(e)[:100]}...")
+                            continue
                         except Exception as e:
                             logger.warning(f"Error reading log line: {e}")
                             time.sleep(0.1)
