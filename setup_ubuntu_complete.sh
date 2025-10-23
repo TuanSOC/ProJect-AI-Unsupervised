@@ -118,15 +118,20 @@ try:
     
     result = detector.predict_single(test_log)
     
-    # Handle both tuple and dict return types
+    # Handle tuple return type (is_anomaly, normalized_score, patterns, confidence)
     if isinstance(result, tuple):
-        is_sqli, score, patterns = result
-        if is_sqli:
-            print('✅ Model is working correctly!')
-            print(f'   Score: {score:.4f}')
-            print(f'   Patterns: {patterns}')
+        if len(result) == 4:
+            is_sqli, score, patterns, confidence = result
+            if is_sqli:
+                print('✅ Model is working correctly!')
+                print(f'   Score: {score:.4f}')
+                print(f'   Patterns: {patterns}')
+                print(f'   Confidence: {confidence}')
+            else:
+                print('❌ Model is not detecting SQLi properly')
+                sys.exit(1)
         else:
-            print('❌ Model is not detecting SQLi properly')
+            print(f'❌ Unexpected tuple length: {len(result)}')
             sys.exit(1)
     elif isinstance(result, dict):
         if result.get('is_sqli'):
@@ -137,7 +142,7 @@ try:
             print('❌ Model is not detecting SQLi properly')
             sys.exit(1)
     else:
-        print('❌ Unexpected result type from predict_single')
+        print(f'❌ Unexpected result type: {type(result)}')
         sys.exit(1)
         
 except Exception as e:
