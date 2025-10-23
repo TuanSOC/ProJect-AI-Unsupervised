@@ -118,12 +118,26 @@ try:
     
     result = detector.predict_single(test_log)
     
-    if result and result.get('is_sqli'):
-        print('✅ Model is working correctly!')
-        print(f'   Score: {result.get(\"score\", 0):.4f}')
-        print(f'   Patterns: {result.get(\"detected_patterns\", [])}')
+    # Handle both tuple and dict return types
+    if isinstance(result, tuple):
+        is_sqli, score, patterns = result
+        if is_sqli:
+            print('✅ Model is working correctly!')
+            print(f'   Score: {score:.4f}')
+            print(f'   Patterns: {patterns}')
+        else:
+            print('❌ Model is not detecting SQLi properly')
+            sys.exit(1)
+    elif isinstance(result, dict):
+        if result.get('is_sqli'):
+            print('✅ Model is working correctly!')
+            print(f'   Score: {result.get(\"score\", 0):.4f}')
+            print(f'   Patterns: {result.get(\"detected_patterns\", [])}')
+        else:
+            print('❌ Model is not detecting SQLi properly')
+            sys.exit(1)
     else:
-        print('❌ Model is not detecting SQLi properly')
+        print('❌ Unexpected result type from predict_single')
         sys.exit(1)
         
 except Exception as e:
@@ -176,6 +190,7 @@ try:
             print(f'   Patterns: {result.get(\"detected_patterns\", [])}')
         else:
             print('❌ RealtimeLogCollector is not detecting SQLi properly')
+            print(f'   Result: {result}')
             sys.exit(1)
     else:
         print('❌ Failed to initialize detector in RealtimeLogCollector')
