@@ -713,11 +713,13 @@ class RealtimeLogCollector:
             # Skip if score is too low (but allow some flexibility)
             # Model returns normalized score (0-1, higher = more anomalous)
             # Use model's trained threshold for normalized score
-            model_threshold = 0.5  # Default normalized threshold
+            model_threshold = 0.4  # Lowered default threshold for better detection
             if hasattr(self.detector, 'sqli_score_threshold') and self.detector.sqli_score_threshold:
                 # Convert raw threshold to normalized score
                 raw_threshold = self.detector.sqli_score_threshold
                 model_threshold = 1 / (1 + np.exp(-raw_threshold))  # Sigmoid transformation
+                # Lower the threshold by 10% to catch more SQLi
+                model_threshold = model_threshold * 0.9
             
             if score < model_threshold:
                 return False
