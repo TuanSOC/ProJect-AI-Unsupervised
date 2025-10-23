@@ -94,15 +94,13 @@ AI-SQLi-Detection/
 git clone https://github.com/TuanSOC/ProJect-AI-Unsupervised.git
 cd ProJect-AI-Unsupervised
 
-# 2. Install dependencies
-pip install -r requirements.txt
+# 2. Setup và chạy
+chmod +x setup_ubuntu_simple.sh
+./setup_ubuntu_simple.sh
 
-# 3. Test model
-python -c "from optimized_sqli_detector import OptimizedSQLIDetector; detector = OptimizedSQLIDetector(); detector.load_model('models/optimized_sqli_detector.pkl'); print('✅ Model loaded successfully!')"
-
-# 4. Start system
-python app.py &
-python realtime_log_collector.py &
+# 3. Start system
+python3 app.py &
+python3 realtime_log_collector.py &
 ```
 
 ### Windows
