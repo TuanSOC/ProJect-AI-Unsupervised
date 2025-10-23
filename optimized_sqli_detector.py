@@ -815,7 +815,7 @@ class OptimizedSQLIDetector:
             'mysql.user', 'version(', 'user(', 'exec(', 'execute(',
             'xp_cmdshell', 'sp_executesql', 'load_file(', 'into outfile',
             '--', '#', '/*', '*/', '0x', 'char(', 'ascii(',
-            'order by', 'group by', 'having', 'limit', 'offset', 'regexp', 'like',
+            'order by', 'group by', 'having', 'offset', 'regexp', 'like',
             # Additional SQLi patterns (only high-confidence ones)
             'or 1=1--', 'and 1=1--', 'or 1=1#', 'and 1=1#',
             'union all select', 'union select *', 'union select 1',
@@ -851,8 +851,8 @@ class OptimizedSQLIDetector:
         
         # Ngưỡng risk score giúp nâng độ nhạy với payload không khớp pattern tường minh
         risk_score = features.get('sqli_risk_score', 0)
-        # Lower high-risk threshold to improve sensitivity for blind/time-based cases
-        high_risk = risk_score >= 20
+        # Higher risk threshold to reduce false positives
+        high_risk = risk_score >= 50
 
         # Allowlist: nếu chuỗi chỉ có ký tự an toàn thông dụng và KHÔNG có pattern → coi là sạch
         # Cho phép: chữ/số, _, -, ., /, ?, =, &, :, %, khoảng trắng
