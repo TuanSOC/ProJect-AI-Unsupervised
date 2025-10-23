@@ -70,6 +70,13 @@ def base64_decode_safe(s: str) -> str:
         # Handle URL-encoded Base64 characters
         s = s.replace('%2B', '+').replace('%2F', '/').replace('%3D', '=')
         
+        # Remove trailing URL encoded characters that are not part of Base64
+        # Remove %23 (#) and other URL encoded chars from the end
+        s = s.rstrip('%23').rstrip('%2B').rstrip('%2F').rstrip('%3D')
+        # Also remove any remaining %23 at the end
+        while s.endswith('%23'):
+            s = s[:-3]
+        
         # Check if string contains only valid Base64 characters
         valid_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=')
         if not all(c in valid_chars for c in s):
@@ -273,6 +280,7 @@ class OptimizedSQLIDetector:
         
         # Base64 decoding for enhanced detection
         base64_decoded_content = ""
+        
         # Try to decode payload if it looks like base64
         if payload and len(payload) > 4:
             # Extract Base64 part from payload (e.g., "data=JyBPUiAxPTEtLQ==" -> "JyBPUiAxPTEtLQ==")
@@ -280,16 +288,21 @@ class OptimizedSQLIDetector:
                 # Split by first '=' to get the Base64 part
                 parts = payload.split('=', 1)  # Split only on first '='
                 if len(parts) > 1:
-                    base64_part = parts[1]  # Get the part after the first '='
-                    if len(base64_part) > 4:
-                        decoded_payload = base64_decode_safe(base64_part)
-                        if decoded_payload != base64_part:  # Only if actually decoded
+                    base64_part = parts[1].split('&')[0]  # Get part before any '&'
+                    # Remove URL encoding from Base64 part
+                    base64_part_clean = base64_part.replace('%2B', '+').replace('%2F', '/').replace('%3D', '=')
+                    # Remove trailing URL encoded characters that are not part of Base64
+                    base64_part_clean = base64_part_clean.rstrip('%23').rstrip('%2B').rstrip('%2F').rstrip('%3D')
+                    if len(base64_part_clean) > 4:
+                        decoded_payload = base64_decode_safe(base64_part_clean)
+                        if decoded_payload != base64_part_clean:  # Only if actually decoded
                             base64_decoded_content += decoded_payload
             else:
                 # If no '=' in payload, try to decode the whole payload
                 decoded_payload = base64_decode_safe(payload)
                 if decoded_payload != payload:  # Only if actually decoded
                     base64_decoded_content += decoded_payload
+        
         # Try to decode query string if it looks like base64
         if query_string and len(query_string) > 4:
             # Extract Base64 part from query string
@@ -297,10 +310,14 @@ class OptimizedSQLIDetector:
                 # Split by first '=' to get the Base64 part
                 parts = query_string.split('=', 1)  # Split only on first '='
                 if len(parts) > 1:
-                    base64_part = parts[1]  # Get the part after the first '='
-                    if len(base64_part) > 4:
-                        decoded_query = base64_decode_safe(base64_part)
-                        if decoded_query != base64_part:  # Only if actually decoded
+                    base64_part = parts[1].split('&')[0]  # Get part before any '&'
+                    # Remove URL encoding from Base64 part
+                    base64_part_clean = base64_part.replace('%2B', '+').replace('%2F', '/').replace('%3D', '=')
+                    # Remove trailing URL encoded characters that are not part of Base64
+                    base64_part_clean = base64_part_clean.rstrip('%23').rstrip('%2B').rstrip('%2F').rstrip('%3D')
+                    if len(base64_part_clean) > 4:
+                        decoded_query = base64_decode_safe(base64_part_clean)
+                        if decoded_query != base64_part_clean:  # Only if actually decoded
                             base64_decoded_content += " " + decoded_query
             else:
                 # If no '=' in query string, try to decode the whole query string
@@ -407,7 +424,11 @@ class OptimizedSQLIDetector:
                 parts = payload.split('=', 1)
                 if len(parts) > 1:
                     base64_part = parts[1].split('&')[0]  # Get part before any '&'
-                    if len(base64_part) > 4 and base64_decode_safe(base64_part) != base64_part:
+                    # Remove URL encoding from Base64 part
+                    base64_part_clean = base64_part.replace('%2B', '+').replace('%2F', '/').replace('%3D', '=')
+                    # Remove trailing URL encoded characters that are not part of Base64
+                    base64_part_clean = base64_part_clean.rstrip('%23').rstrip('%2B').rstrip('%2F').rstrip('%3D')
+                    if len(base64_part_clean) > 4 and base64_decode_safe(base64_part_clean) != base64_part_clean:
                         features['has_base64_payload'] = 1
             else:
                 # If no '=' in payload, try to decode the whole payload
@@ -421,7 +442,11 @@ class OptimizedSQLIDetector:
                 parts = query_string.split('=', 1)
                 if len(parts) > 1:
                     base64_part = parts[1].split('&')[0]  # Get part before any '&'
-                    if len(base64_part) > 4 and base64_decode_safe(base64_part) != base64_part:
+                    # Remove URL encoding from Base64 part
+                    base64_part_clean = base64_part.replace('%2B', '+').replace('%2F', '/').replace('%3D', '=')
+                    # Remove trailing URL encoded characters that are not part of Base64
+                    base64_part_clean = base64_part_clean.rstrip('%23').rstrip('%2B').rstrip('%2F').rstrip('%3D')
+                    if len(base64_part_clean) > 4 and base64_decode_safe(base64_part_clean) != base64_part_clean:
                         features['has_base64_query'] = 1
             else:
                 # If no '=' in query string, try to decode the whole query string
@@ -477,8 +502,12 @@ class OptimizedSQLIDetector:
             parts = payload.split('=', 1)
             if len(parts) > 1:
                 base64_part = parts[1].split('&')[0]
-                decoded_payload = base64_decode_safe(base64_part)
-                if decoded_payload != base64_part:
+                # Remove URL encoding from Base64 part
+                base64_part_clean = base64_part.replace('%2B', '+').replace('%2F', '/').replace('%3D', '=')
+                # Remove trailing URL encoded characters that are not part of Base64
+                base64_part_clean = base64_part_clean.rstrip('%23').rstrip('%2B').rstrip('%2F').rstrip('%3D')
+                decoded_payload = base64_decode_safe(base64_part_clean)
+                if decoded_payload != base64_part_clean:
                     decoded_lower = decoded_payload.lower()
                     sql_patterns = ['union', 'select', 'drop', 'insert', 'update', 'delete', 'or 1=1', 'and 1=1', '--', '/*', '*/']
                     for pattern in sql_patterns:
@@ -489,8 +518,12 @@ class OptimizedSQLIDetector:
             parts = query_string.split('=', 1)
             if len(parts) > 1:
                 base64_part = parts[1].split('&')[0]
-                decoded_query = base64_decode_safe(base64_part)
-                if decoded_query != base64_part:
+                # Remove URL encoding from Base64 part
+                base64_part_clean = base64_part.replace('%2B', '+').replace('%2F', '/').replace('%3D', '=')
+                # Remove trailing URL encoded characters that are not part of Base64
+                base64_part_clean = base64_part_clean.rstrip('%23').rstrip('%2B').rstrip('%2F').rstrip('%3D')
+                decoded_query = base64_decode_safe(base64_part_clean)
+                if decoded_query != base64_part_clean:
                     decoded_lower = decoded_query.lower()
                     sql_patterns = ['union', 'select', 'drop', 'insert', 'update', 'delete', 'or 1=1', 'and 1=1', '--', '/*', '*/']
                     for pattern in sql_patterns:
