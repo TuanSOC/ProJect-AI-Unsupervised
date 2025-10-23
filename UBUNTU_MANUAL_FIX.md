@@ -38,7 +38,7 @@ print('flask:', flask.__version__)
 python3 -c "
 from optimized_sqli_detector import OptimizedSQLIDetector
 detector = OptimizedSQLIDetector()
-detector.train('sqli_logs_clean_100k.jsonl')
+detector.train_from_path('sqli_logs_clean_100k.jsonl')
 print('Model retrained successfully!')
 "
 ```
