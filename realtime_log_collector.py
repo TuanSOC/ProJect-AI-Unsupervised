@@ -901,8 +901,38 @@ class RealtimeLogCollector:
             self.stop_monitoring()
     
     def _fix_json_line(self, line):
-        """Try to fix common JSON parsing issues"""
+        """Try to fix common JSON parsing issues including line breaks"""
         try:
+            # First, try to handle line breaks in JSON
+            line = line.strip()
+            
+            # If line doesn't start with {, it might be a continuation
+            if not line.startswith('{'):
+                # Try to find the start of a JSON object
+                start_pos = line.find('{')
+                if start_pos > 0:
+                    line = line[start_pos:]
+                else:
+                    return line  # Can't fix this line
+            
+            # If line doesn't end with }, try to find the end
+            if not line.endswith('}'):
+                # Count braces to find the end of the JSON object
+                brace_count = 0
+                end_pos = -1
+                
+                for i, char in enumerate(line):
+                    if char == '{':
+                        brace_count += 1
+                    elif char == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            end_pos = i + 1
+                            break
+                
+                if end_pos > 0:
+                    line = line[:end_pos]
+            
             # Remove trailing commas before closing braces/brackets
             line = re.sub(r',(\s*[}\]])', r'\1', line)
             
