@@ -261,10 +261,10 @@ class RealtimeLogCollector:
         else:
             risk_level = "MINIMAL"
         
-        # AI score assessment
+        # AI score assessment (normalized score: 0-1, higher = more anomalous)
         if ai_score >= 0.5:
             ai_risk = "HIGH"
-        elif ai_score >= 0.49:
+        elif ai_score >= 0.3:
             ai_risk = "MEDIUM"
         else:
             ai_risk = "LOW"
@@ -579,12 +579,12 @@ class RealtimeLogCollector:
         else:
             overall_risk = "LOW"
         
-        # Confidence level
+        # Confidence level (normalized score: 0-1, higher = more anomalous)
         if ai_score >= 0.5 and risk_assessment["risk_score"] >= 30:
             confidence = "VERY_HIGH"
-        elif ai_score >= 0.49 and risk_assessment["risk_score"] >= 15:
+        elif ai_score >= 0.3 and risk_assessment["risk_score"] >= 15:
             confidence = "HIGH"
-        elif ai_score >= 0.48:
+        elif ai_score >= 0.2:
             confidence = "MEDIUM"
         else:
             confidence = "LOW"
@@ -713,11 +713,10 @@ class RealtimeLogCollector:
             # Skip if score is too low (but allow some flexibility)
             # Model returns normalized score (0-1, higher = more anomalous)
             # Use model's trained threshold for normalized score
-            model_threshold = 0.4  # Lowered default threshold for better detection
+            model_threshold = 0.4  # Default threshold for normalized score
             if hasattr(self.detector, 'sqli_score_threshold') and self.detector.sqli_score_threshold:
-                # Convert raw threshold to normalized score
-                raw_threshold = self.detector.sqli_score_threshold
-                model_threshold = 1 / (1 + np.exp(-raw_threshold))  # Sigmoid transformation
+                # Use model's trained threshold directly (already normalized)
+                model_threshold = self.detector.sqli_score_threshold
                 # Lower the threshold by 10% to catch more SQLi
                 model_threshold = model_threshold * 0.9
             
@@ -784,7 +783,7 @@ class RealtimeLogCollector:
             
             # Check risk score
             risk_score = features.get('sqli_risk_score', 0)
-            has_high_risk = risk_score >= 30  # Lowered threshold
+            has_high_risk = risk_score >= 50  # Use model's high_risk threshold
             
             # Return True if any condition is met
             return (has_sql_content or 
