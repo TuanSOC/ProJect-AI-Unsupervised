@@ -195,7 +195,7 @@ class OptimizedSQLIDetector:
     - n_jobs: số core dùng khi train/predict
     """
 
-    def __init__(self, contamination=0.01, random_state=42, n_estimators=200, max_features=0.8, n_jobs=-1):
+    def __init__(self, contamination='auto', random_state=42, n_estimators=200, max_features=0.8, n_jobs=-1):
         self.contamination = contamination
         self.random_state = random_state
         self.isolation_forest = IsolationForest(
@@ -971,7 +971,7 @@ def train_optimized_model():
     logger.info(f"📊 Training với {len(clean_logs)} clean logs (source: {data_path})")
     
     # Create optimized detector
-    detector = OptimizedSQLIDetector(contamination=0.01, random_state=42)
+    detector = OptimizedSQLIDetector(contamination='auto', random_state=42)
     
     # Train
     X_scaled, feature_names = detector.train(clean_logs)

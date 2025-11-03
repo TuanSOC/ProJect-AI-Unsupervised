@@ -612,7 +612,24 @@ class RealtimeLogCollector:
         """Xử lý một dòng log với detailed analysis"""
         if not log_entry:
             return
-            
+        
+        # Skip noise: invalid method, 408, static assets
+        try:
+            method = str(log_entry.get('method', '')).strip()
+            if method in {'', '-'}:
+                return
+            status = int(log_entry.get('status', 0) or 0)
+            if status == 408:
+                return
+            uri_l = str(log_entry.get('uri', '')).lower()
+            if any(p in uri_l for p in ['/css/', '/js/', '/images/', '/favicon.ico', '/sitemap.xml', '/dvwa/js', '/dvwa/images']):
+                return
+            import re as _re
+            if _re.search(r"\.(css|js|png|jpg|jpeg|gif|ico|svg|map|woff2?)$", uri_l):
+                return
+        except Exception:
+            pass
+
         # Phát hiện SQLi
         detection_result = self.detect_sqli_realtime(log_entry)
         
