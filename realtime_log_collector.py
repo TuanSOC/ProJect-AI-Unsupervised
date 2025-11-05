@@ -728,16 +728,11 @@ class RealtimeLogCollector:
                 return False
             
             # Skip if score is too low (but allow some flexibility)
-            # Model returns normalized score (0-1, higher = more anomalous)
-            # Use model's trained threshold for normalized score
-            model_threshold = 0.4  # Default threshold for normalized score
-            if hasattr(self.detector, 'sqli_score_threshold') and self.detector.sqli_score_threshold:
-                # Use model's trained threshold directly (already normalized)
-                model_threshold = self.detector.sqli_score_threshold
-                # Lower the threshold by 10% to catch more SQLi
-                model_threshold = model_threshold * 0.9
+            # NOTE: detector returns normalized score (0-1), higher = more anomalous
+            # Use explicit normalized threshold or fallback to 0.5
+            model_threshold = self.detection_threshold if self.detection_threshold is not None else 0.5
             
-            if score < model_threshold:
+            if float(score) < float(model_threshold):
                 return False
             
             # Skip common false positive patterns

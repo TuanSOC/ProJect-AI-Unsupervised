@@ -37,6 +37,62 @@ detector = None
 model_cache = {}
 thread_lock = threading.RLock()
 stats_lock = threading.Lock()
+# File log phát hiện SQLi (JSONL) và khóa ghi file
+_detection_log_lock = threading.Lock()
+_detection_log_path = os.environ.get('SQLI_DETECTION_LOG', os.path.join('logs', 'detections.jsonl'))
+
+def _ensure_detection_log_dir():
+    try:
+        dirn = os.path.dirname(_detection_log_path)
+        if dirn:
+            os.makedirs(dirn, exist_ok=True)
+    except Exception:
+        pass
+
+def _rotate_detection_log_if_needed(max_bytes: int = 10 * 1024 * 1024, backups: int = 3):
+    try:
+        if not os.path.exists(_detection_log_path):
+            return
+        size = os.path.getsize(_detection_log_path)
+        if size < max_bytes:
+            return
+        # Rotate: detections.jsonl -> detections.jsonl.1 -> ... up to backups
+        for i in range(backups, 0, -1):
+            src = f"{_detection_log_path}.{i}" if i > 0 else _detection_log_path
+            dst = f"{_detection_log_path}.{i+1}"
+            if os.path.exists(src):
+                # If exceeding backups, remove oldest
+                if i == backups:
+                    try:
+                        os.remove(src)
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        os.replace(src, dst)
+                    except Exception:
+                        pass
+        # Finally rotate current to .1
+        try:
+            os.replace(_detection_log_path, f"{_detection_log_path}.1")
+        except Exception:
+            pass
+    except Exception:
+        # Best-effort rotation
+        pass
+
+def _append_detection_jsonl(entry: dict) -> None:
+    """Ghi 1 dòng JSONL về phát hiện SQLi (thread-safe, best-effort)."""
+    try:
+        _ensure_detection_log_dir()
+        line = json.dumps(entry, ensure_ascii=False)
+        with _detection_log_lock:
+            _rotate_detection_log_if_needed()
+            with open(_detection_log_path, 'a', encoding='utf-8') as f:
+                f.write(line + "\n")
+    except Exception:
+        # Không chặn xử lý nếu ghi log file lỗi
+        pass
 performance_stats = {
     'total_logs': 0,
     'sqli_detected': 0,
@@ -197,6 +253,24 @@ def detect_sqli_async(log_entry: Dict[str, Any], model_path: str = 'models/optim
             logger.warning(f"   Score: {score:.3f}")
             logger.warning(f"   Patterns: {patterns}")
             logger.warning(f"   Processing time: {processing_time:.3f}s")
+            # Ghi file JSONL phát hiện SQLi
+            detection_row = {
+                'ts': result['timestamp'],
+                'remote_ip': log_entry.get('remote_ip'),
+                'method': log_entry.get('method'),
+                'uri': log_entry.get('uri'),
+                'query_string': log_entry.get('query_string'),
+                'payload': log_entry.get('payload'),
+                'body': log_entry.get('body'),
+                'cookie': log_entry.get('cookie'),
+                'user_agent': log_entry.get('user_agent'),
+                'detected': True,
+                'score': float(result['detection']['score']),
+                'patterns': result['detection']['patterns'],
+                'confidence': result['detection']['confidence'],
+                'processing_time': result['detection']['processing_time']
+            }
+            _append_detection_jsonl(_to_serializable(detection_row))
         
         return safe_result
         
