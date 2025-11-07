@@ -1,1 +1,0 @@
-{"ts": "2025-11-05T18:22:29.840285", "remote_ip": "1.2.3.4", "method": "GET", "uri": "/vuln.php", "query_string": "id=1%27%20or%201=1--%20", "payload": "", "body": "", "cookie": "session=abc", "user_agent": "curl/8.0", "detected": true, "score": 0.5225398443158206, "patterns": ["or 1=1", "--", "or 1=1--"], "confidence": "High", "processing_time": 0.08810925483703613}

@@ -129,24 +129,37 @@ Apache Logs → Log Collector → AI Detection → Web Dashboard → Alerts
 
 ## 🚀 Quick Start
 
-### 1. Installation
+### Ubuntu Setup (Recommended)
 ```bash
+# Clone project
+git clone <repository-url>
+cd AI-dev
+
+# Run complete setup script
+chmod +x setup_ubuntu_complete.sh
+./setup_ubuntu_complete.sh
+
+# Start services
+./start_app.sh          # Web dashboard
+./start_realtime.sh     # Real-time monitoring
+```
+
+### Manual Setup
+```bash
+# 1. Installation
 pip install -r requirements.txt
-```
 
-### 2. Training Model
-```bash
-python train_optimized_model.py
-```
+# 2. Training Model
+python3 retrain_model.py
 
-### 3. Start Web Dashboard
-```bash
-python app.py
-```
+# 3. Calibrate Threshold
+python3 calibrate_threshold.py
 
-### 4. Start Real-time Monitoring
-```bash
-python realtime_log_collector.py
+# 4. Start Web Dashboard
+python3 app.py
+
+# 5. Start Real-time Monitoring
+python3 realtime_log_collector.py
 ```
 
 ## 📁 Project Structure
@@ -156,13 +169,23 @@ AI dev/
 ├── optimized_sqli_detector.py    # Core AI model
 ├── app.py                        # Flask web application
 ├── realtime_log_collector.py     # Real-time log monitoring
+├── setup_ubuntu_complete.sh     # Ubuntu setup script
+├── retrain_model.py             # Retrain model script
+├── calibrate_threshold.py       # Calibrate threshold script
+├── test_performance_with_dataset.py  # Performance testing
 ├── models/
 │   ├── optimized_sqli_detector.pkl
-│   ├── optimized_sqli_metadata.json
-│   └── scoring_explain_vi.txt
+│   └── optimized_sqli_metadata.json
 ├── templates/
 │   └── index.html
+├── docs/                        # Documentation
+│   ├── DEPLOYMENT_QUICK_START.md
+│   ├── WAZUH_INTEGRATION.md
+│   └── ...
+├── logs/                        # Log files (auto-created)
+│   └── wazuh_sqli_detections.jsonl
 ├── sqli_logs_clean_100k.jsonl   # Training data
+├── test_dataset_5000.jsonl      # Test dataset
 └── requirements.txt
 ```
 
@@ -212,9 +235,11 @@ AI dev/
 
 ## 📚 Documentation
 
-- **Model Documentation**: `models/scoring_explain_vi.txt`
-- **API Documentation**: Available in code comments
-- **Performance Analysis**: `analyze_scoring_system.py`
+Xem thư mục `docs/` để biết chi tiết:
+- **Deployment Guide**: `docs/DEPLOYMENT_QUICK_START.md` - Hướng dẫn deploy nhanh với Wazuh
+- **Wazuh Integration**: `docs/WAZUH_INTEGRATION.md` - Hướng dẫn tích hợp Wazuh SIEM đầy đủ
+- **Project Review**: `docs/PROJECT_REVIEW_SUMMARY.md` - Tổng hợp đánh giá logic và tham số
+- **Cleanup Summary**: `docs/PROJECT_CLEANUP_SUMMARY.md` - Tổng hợp dọn dẹp và kiểm tra
 
 ## 🎯 Production Deployment
 

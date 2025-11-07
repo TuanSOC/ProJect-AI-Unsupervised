@@ -895,9 +895,8 @@ class OptimizedSQLIDetector:
         features['has_time_based'] = 1 if any(func in text_content for func in ['sleep(', 'waitfor', 'benchmark']) else 0
         features['has_comment_injection'] = 1 if any(comment in text_content for comment in ['--', '/*', '*/']) else 0
         
-        # Method encoding
-        method = log_entry.get('method', 'GET')
-        features['method_encoded'] = 1 if method == 'POST' else 0
+        # Method encoding: đã tính ở đầu theo method.upper() == 'POST'
+        # Không ghi đè lần hai để giữ đồng nhất
 
         # URL/Path structure features
         features['has_numeric_id'] = 1 if re.search(r"[?&]id=\d+", f"{decoded_qs}") else 0
@@ -1839,7 +1838,8 @@ class OptimizedSQLIDetector:
             # metadata placeholders: percentiles and chosen thresholds
             'metadata': {
                 'score_percentiles': getattr(self, 'score_percentiles', None),
-                'sqli_score_threshold': getattr(self, 'sqli_score_threshold', None)
+                'sqli_score_threshold': getattr(self, 'sqli_score_threshold', None),
+                'decision_threshold': getattr(self, 'decision_threshold', None)
             }
         }
         dirn = os.path.dirname(model_path)
@@ -1922,7 +1922,8 @@ def train_optimized_model():
         "sqli_score_threshold": getattr(detector, "sqli_score_threshold", None),
         "feature_names": detector.feature_names,
         "contamination": detector.contamination,
-        "random_state": detector.random_state
+        "random_state": detector.random_state,
+        "decision_threshold": getattr(detector, "decision_threshold", None)
     }
     with open("models/optimized_sqli_metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)

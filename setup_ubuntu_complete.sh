@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -e
 
 echo "=========================================="
@@ -46,9 +47,11 @@ sudo apt install -y python3-pip python3-venv
 print_status "Installing Python dependencies..."
 pip3 install -r requirements.txt
 
-# Step 3: Create models directory if it doesn't exist
-print_status "Creating models directory..."
+# Step 3: Create necessary directories
+print_status "Creating necessary directories..."
 mkdir -p models
+mkdir -p logs
+mkdir -p templates
 
 # Step 4: Retrain model with current scikit-learn version
 print_status "Retraining AI model..."
@@ -57,7 +60,6 @@ import sys
 sys.path.append('.')
 from optimized_sqli_detector import OptimizedSQLIDetector
 import logging
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -79,17 +81,22 @@ try:
     
 except Exception as e:
     print(f'❌ Error: {e}')
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 "
 
-# Step 5: Test model with sample SQLi
+# Step 5: Calibrate threshold
+print_status "Calibrating decision threshold..."
+python3 calibrate_threshold.py
+
+# Step 6: Test model with sample SQLi
 print_status "Testing model with sample SQLi payload..."
 python3 -c "
 import sys
 sys.path.append('.')
 from optimized_sqli_detector import OptimizedSQLIDetector
 import logging
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -147,17 +154,18 @@ try:
         
 except Exception as e:
     print(f'❌ Error testing model: {e}')
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 "
 
-# Step 6: Test realtime collector
+# Step 7: Test realtime collector
 print_status "Testing realtime collector..."
 python3 -c "
 import sys
 sys.path.append('.')
 from realtime_log_collector import RealtimeLogCollector
 import logging
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -203,10 +211,12 @@ try:
         
 except Exception as e:
     print(f'❌ Error testing realtime collector: {e}')
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 "
 
-# Step 7: Check Apache log file
+# Step 8: Check Apache log file
 print_status "Checking Apache log file..."
 APACHE_LOG="/var/log/apache2/access_full_json.log"
 if [ -f "$APACHE_LOG" ]; then
@@ -224,13 +234,24 @@ else
     print_warning "Please check Apache configuration for JSON logging"
 fi
 
-# Step 8: Create start scripts
+# Step 9: Check Wazuh log directory
+print_status "Checking Wazuh log directory..."
+WAZUH_LOG_DIR="logs"
+if [ -d "$WAZUH_LOG_DIR" ]; then
+    print_status "✅ Logs directory exists: $WAZUH_LOG_DIR"
+    print_status "   Wazuh detection log will be saved to: $WAZUH_LOG_DIR/wazuh_sqli_detections.jsonl"
+else
+    print_warning "⚠️ Logs directory not found, will be created automatically"
+fi
+
+# Step 10: Create start scripts
 print_status "Creating start scripts..."
 
 # Create start_app.sh
 cat > start_app.sh << 'EOF'
 #!/bin/bash
 echo "Starting AI SQLi Detection Web App..."
+echo "Access: http://localhost:5000"
 python3 app.py
 EOF
 
@@ -238,6 +259,8 @@ EOF
 cat > start_realtime.sh << 'EOF'
 #!/bin/bash
 echo "Starting AI SQLi Detection Realtime Monitor..."
+echo "Wazuh log: logs/wazuh_sqli_detections.jsonl"
+echo "Press Ctrl+C to stop"
 python3 realtime_log_collector.py
 EOF
 
@@ -252,6 +275,11 @@ print_status "1. Start web app:     ./start_app.sh"
 print_status "2. Start realtime:    ./start_realtime.sh"
 print_status "3. Open browser:      http://localhost:5000"
 print_status "4. Test SQLi detection with various payloads"
+print_status ""
+print_status "Wazuh Integration:"
+print_status "- Detection log: logs/wazuh_sqli_detections.jsonl"
+print_status "- See docs/WAZUH_INTEGRATION.md for Wazuh setup"
 print_header "=========================================="
 print_status "🎉 AI SQLi Detection System is ready!"
 print_header "=========================================="
+

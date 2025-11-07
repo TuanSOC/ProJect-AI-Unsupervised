@@ -10,6 +10,7 @@ import time
 import logging
 import requests
 import threading
+import os
 from datetime import datetime
 from optimized_sqli_detector import OptimizedSQLIDetector
 import queue
@@ -29,12 +30,72 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# File log phát hiện SQLi cho Wazuh (JSONL format)
+_wazuh_detection_log_lock = threading.Lock()
+_wazuh_detection_log_path = os.environ.get(
+    'WAZUH_SQLI_DETECTION_LOG', 
+    os.path.join('logs', 'wazuh_sqli_detections.jsonl')
+)
+
+def _ensure_wazuh_log_dir():
+    """Đảm bảo thư mục logs tồn tại"""
+    try:
+        dirn = os.path.dirname(_wazuh_detection_log_path)
+        if dirn:
+            os.makedirs(dirn, exist_ok=True)
+    except Exception:
+        pass
+
+def _rotate_wazuh_log_if_needed(max_bytes: int = 10 * 1024 * 1024, backups: int = 3):
+    """Rotate file log khi quá 10MB"""
+    try:
+        if not os.path.exists(_wazuh_detection_log_path):
+            return
+        size = os.path.getsize(_wazuh_detection_log_path)
+        if size < max_bytes:
+            return
+        # Rotate: wazuh_sqli_detections.jsonl -> wazuh_sqli_detections.jsonl.1 -> ... up to backups
+        for i in range(backups, 0, -1):
+            src = f"{_wazuh_detection_log_path}.{i}" if i > 0 else _wazuh_detection_log_path
+            dst = f"{_wazuh_detection_log_path}.{i+1}"
+            if os.path.exists(src):
+                if i == backups:
+                    try:
+                        os.remove(src)
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        os.replace(src, dst)
+                    except Exception:
+                        pass
+        # Finally rotate current to .1
+        try:
+            os.replace(_wazuh_detection_log_path, f"{_wazuh_detection_log_path}.1")
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+def _append_wazuh_detection_jsonl(entry: dict) -> None:
+    """Ghi 1 dòng JSONL về phát hiện SQLi cho Wazuh (thread-safe, best-effort)."""
+    try:
+        _ensure_wazuh_log_dir()
+        line = json.dumps(entry, ensure_ascii=False)
+        with _wazuh_detection_log_lock:
+            _rotate_wazuh_log_if_needed()
+            with open(_wazuh_detection_log_path, 'a', encoding='utf-8') as f:
+                f.write(line + "\n")
+    except Exception:
+        pass
+
 class RealtimeLogCollector:
     """Thu thập và phân tích log realtime từ Apache với detailed analysis"""
     
     def __init__(self, log_path="/var/log/apache2/access_full_json.log", 
                  webhook_url="http://localhost:5000/api/realtime-detect",
-                 detection_threshold=None):
+                 detection_threshold=None,
+                 wazuh_log_path=None):
         self.log_path = log_path
         self.webhook_url = webhook_url
         self.detection_threshold = detection_threshold
@@ -42,6 +103,11 @@ class RealtimeLogCollector:
         self.log_queue = queue.Queue(maxsize=1000)
         self.running = False
         self.process = None
+        
+        # Wazuh log path (có thể override)
+        if wazuh_log_path:
+            global _wazuh_detection_log_path
+            _wazuh_detection_log_path = wazuh_log_path
         
         # Statistics
         self.stats = {
@@ -633,8 +699,12 @@ class RealtimeLogCollector:
         # Phát hiện SQLi
         detection_result = self.detect_sqli_realtime(log_entry)
         
-        # Filter false positives: only detect if score > threshold AND has suspicious content
+        # Phát hiện SQLi - lưu tất cả detections vào Wazuh log
         if detection_result and detection_result['is_sqli']:
+            # Lưu vào file Wazuh log (cho SIEM integration) - LUÔN lưu khi detect SQLi
+            self.save_wazuh_log(log_entry, detection_result)
+            
+            # Filter false positives: chỉ log chi tiết và gửi webhook cho real threats
             is_real_threat = self._is_real_threat(detection_result, log_entry)
             if is_real_threat:
                 # Get detailed analysis
@@ -706,10 +776,10 @@ class RealtimeLogCollector:
                 
                 logger.warning("-" * 80)
                 
-                # Gửi đến webhook
+                # Gửi đến webhook (chỉ cho real threats)
                 self.send_to_webhook(log_entry, detection_result)
             
-            # Lưu vào file threat log
+            # Lưu vào file threat log (backward compatibility)
             self.save_threat_log(log_entry, detection_result)
         else:
             # Log normal traffic (optional)
@@ -838,7 +908,7 @@ class RealtimeLogCollector:
             logger.error(f"❌ Error sending to webhook: {e}")
     
     def save_threat_log(self, log_entry, detection_result):
-        """Lưu threat log vào file"""
+        """Lưu threat log vào file (backward compatibility)"""
         try:
             threat_data = {
                 'timestamp': datetime.now().isoformat(),
@@ -852,10 +922,52 @@ class RealtimeLogCollector:
         except Exception as e:
             logger.error(f"Error saving threat log: {e}")
     
+    def save_wazuh_log(self, log_entry, detection_result):
+        """Lưu detection log cho Wazuh SIEM (format JSONL, thread-safe)"""
+        try:
+            # Format tương thích với Wazuh: JSON event trên mỗi dòng
+            wazuh_event = {
+                'timestamp': datetime.now().isoformat(),
+                'event_type': 'sqli_detection',
+                'source': 'ai_sqli_detector',
+                'remote_ip': log_entry.get('remote_ip', 'unknown'),
+                'method': log_entry.get('method', ''),
+                'uri': log_entry.get('uri', ''),
+                'query_string': log_entry.get('query_string', ''),
+                'payload': log_entry.get('payload', ''),
+                'body': log_entry.get('body', ''),
+                'cookie': log_entry.get('cookie', ''),
+                'user_agent': log_entry.get('user_agent', ''),
+                'status': log_entry.get('status', 0),
+                'detected': True,
+                'score': float(detection_result.get('score', 0.0)),
+                'patterns': detection_result.get('detected_patterns', []) if isinstance(detection_result.get('detected_patterns'), list) else [detection_result.get('detected_patterns', 'N/A')],
+                'confidence': detection_result.get('confidence', 'Unknown'),
+                'threat_level': detection_result.get('threat_level', 'UNKNOWN'),
+                # Thêm thông tin chi tiết cho Wazuh analysis
+                'risk_score': detection_result.get('detailed_analysis', {}).get('risk_assessment', {}).get('risk_score', 0),
+                'risk_level': detection_result.get('detailed_analysis', {}).get('risk_assessment', {}).get('risk_level', 'UNKNOWN'),
+                'attack_vectors': detection_result.get('detailed_analysis', {}).get('attack_vectors', {}).get('attack_vectors', []),
+                'encoding_types': detection_result.get('detailed_analysis', {}).get('encoding_analysis', {}).get('encoding_types', []),
+                'database_types': detection_result.get('detailed_analysis', {}).get('database_analysis', {}).get('database_types', []),
+                'evasion_techniques': detection_result.get('detailed_analysis', {}).get('evasion_analysis', {}).get('evasion_techniques', []),
+                'recommendation': detection_result.get('detailed_analysis', {}).get('final_assessment', {}).get('recommendation', 'UNKNOWN')
+            }
+            
+            # Ghi vào file Wazuh log (thread-safe, có rotation)
+            _append_wazuh_detection_jsonl(wazuh_event)
+            
+            logger.debug(f"✅ Wazuh log saved: {_wazuh_detection_log_path}")
+                
+        except Exception as e:
+            logger.error(f"Error saving Wazuh log: {e}")
+    
     def start_monitoring(self):
         """Bắt đầu monitoring"""
         logger.info("🚀 Starting realtime SQLi monitoring...")
         logger.info(f"📁 Monitoring log file: {self.log_path}")
+        logger.info(f"📝 Wazuh detection log: {_wazuh_detection_log_path}")
+        logger.info(f"💡 Set WAZUH_SQLI_DETECTION_LOG env var to customize log path")
         
         self.running = True
         
