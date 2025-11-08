@@ -28,9 +28,9 @@ Hệ thống AI không giám sát phát hiện SQLi sử dụng **Isolation Fore
 
 ### Isolation Forest Parameters
 - **Algorithm**: Isolation Forest
-- **Estimators**: 200 trees
-- **Contamination**: 0.01 (1% outliers)
-- **Max Features**: Auto
+- **Estimators**: 300 trees (tối ưu hóa)
+- **Contamination**: Auto (tự động phát hiện)
+- **Max Features**: 1.0 (sử dụng tất cả features)
 - **Max Samples**: Auto
 - **Bootstrap**: False
 - **Random State**: 42
@@ -52,44 +52,61 @@ Hệ thống AI không giám sát phát hiện SQLi sử dụng **Isolation Fore
 ### Risk Score Formula
 ```python
 risk_score = 
-    sqli_patterns × 3.0 +
-    special_chars × 1.0 +
-    sql_keywords × 1.5 +
-    has_union_select × 5.0 +
-    has_information_schema × 4.0 +
-    has_mysql_functions × 3.0 +
-    has_boolean_blind × 6.0 +
-    has_time_based × 3.0 +
-    has_comment_injection × 2.0 +
-    base64_sqli_patterns × 8.0 +
-    has_base64_payload × 3.0 +
-    has_base64_query × 3.0 +
-    has_nosql_patterns × 15.0 +
-    has_nosql_operators × 8.0 +
-    has_json_injection × 5.0 +
-    has_overlong_utf8 × 20.0 +
-    cookie_sqli_patterns_capped × 8.0 +
-    cookie_special_chars_capped × 2.0 +
-    cookie_sql_keywords_capped × 4.0 +
-    cookie_quotes_capped × 3.0 +
-    cookie_operators_capped × 3.0 +
-    min(query_entropy, 8.0) × 0.8 +
-    min(payload_entropy, 8.0) × 1.0
+    sqli_patterns × 5.0 +                    # Tăng từ 3.0 → 5.0
+    special_chars × 0.5 +                    # Giảm từ 1.0 → 0.5
+    sql_keywords × 2.0 +                     # Tăng từ 1.5 → 2.0
+    has_union_select × 10.0 +                # Tăng từ 5.0 → 10.0
+    has_information_schema × 8.0 +           # Tăng từ 4.0 → 8.0
+    has_mysql_functions × 6.0 +              # Tăng từ 3.0 → 6.0
+    has_boolean_blind × 12.0 +               # Tăng từ 6.0 → 12.0
+    has_time_based × 6.0 +                   # Tăng từ 3.0 → 6.0
+    has_comment_injection × 4.0 +            # Tăng từ 2.0 → 4.0
+    base64_sqli_patterns × 10.0 +            # Tăng từ 8.0 → 10.0
+    has_base64_payload × 5.0 +               # Tăng từ 3.0 → 5.0
+    has_base64_query × 5.0 +                 # Tăng từ 3.0 → 5.0
+    has_nosql_patterns × 20.0 +              # Tăng từ 15.0 → 20.0
+    has_nosql_operators × 10.0 +             # Tăng từ 8.0 → 10.0
+    has_json_injection × 8.0 +               # Tăng từ 5.0 → 8.0
+    has_overlong_utf8 × 25.0 +               # Tăng từ 20.0 → 25.0
+    cookie_sqli_patterns_capped × 10.0 / cookie_norm +
+    cookie_special_chars_capped × 1.0 +      # Giảm từ 2.0 → 1.0
+    cookie_sql_keywords_capped × 5.0 +       # Tăng từ 4.0 → 5.0
+    cookie_quotes_capped × 2.0 +             # Giảm từ 3.0 → 2.0
+    cookie_operators_capped × 2.0 +          # Giảm từ 3.0 → 2.0
+    min(query_entropy, 8.0) × 0.3 +          # Giảm từ 0.8 → 0.3
+    min(payload_entropy, 8.0) × 0.5          # Giảm từ 1.0 → 0.5
 ```
+
+**Xem chi tiết**: `docs/DETECTION_LOGIC_DETAILED.md` - Tài liệu đầy đủ về công thức, cách tính, và examples
 
 ### AI Anomaly Score
 - **Model**: Isolation Forest
 - **Decision Function**: negative values = anomalies, positive values = normal
-- **Threshold**: 0.1049126470360918 (50th percentile)
-- **Logic**: anomaly_score < 0 → SQLi DETECTED
+- **Decision Threshold**: -0.10256692591107426 (calibrated on clean logs)
+- **Normalized Score**: `1 / (1 + exp(anomaly_score))` → 0-1 range
+- **Logic**: 
+  - Pattern-based (highest priority): `has_sqli_pattern → DETECT`
+  - Risk-based (medium priority): `risk_score >= 180 → DETECT`
+  - AI-based (fallback): `anomaly_score < strict_threshold → DETECT`
 
 ### Detection Logic
 ```python
-if (has_sqli_pattern) OR (risk_score >= 50) OR (anomaly_score < 0):
-    SQLi DETECTED
+if has_sqli_pattern OR risk_score >= 180:
+    is_anomaly = True  # Pattern/Risk-based detection
+elif whitelist_conditions:
+    is_anomaly = False  # Safe traffic
 else:
-    Normal traffic
+    is_anomaly = anomaly_score < strict_threshold  # AI-based detection
 ```
+
+### Threat Level Classification
+- **CRITICAL**: `risk_score >= 50` → IMMEDIATE_BLOCK
+- **HIGH**: `risk_score >= 30` → BLOCK_AND_INVESTIGATE
+- **MEDIUM**: `risk_score >= 15` → MONITOR_AND_LOG
+- **LOW**: `risk_score >= 5` → ALLOW
+- **MINIMAL**: `risk_score < 5` → ALLOW
+
+**Xem chi tiết**: `docs/DETECTION_LOGIC_DETAILED.md` - Flow đầy đủ và examples
 
 ## 🔄 Workflow
 
@@ -236,10 +253,13 @@ AI dev/
 ## 📚 Documentation
 
 Xem thư mục `docs/` để biết chi tiết:
+- **Detection Logic**: `docs/DETECTION_LOGIC_DETAILED.md` - **Tài liệu chi tiết về cách tính risk score, AI model processing, và các công thức**
 - **Deployment Guide**: `docs/DEPLOYMENT_QUICK_START.md` - Hướng dẫn deploy nhanh với Wazuh
 - **Wazuh Integration**: `docs/WAZUH_INTEGRATION.md` - Hướng dẫn tích hợp Wazuh SIEM đầy đủ
 - **Project Review**: `docs/PROJECT_REVIEW_SUMMARY.md` - Tổng hợp đánh giá logic và tham số
 - **Cleanup Summary**: `docs/PROJECT_CLEANUP_SUMMARY.md` - Tổng hợp dọn dẹp và kiểm tra
+- **Final Logic Review**: `docs/FINAL_LOGIC_REVIEW.md` - Đánh giá logic cuối cùng
+- **Final Project Summary**: `docs/FINAL_PROJECT_SUMMARY.md` - Tổng kết dự án
 
 ## 🎯 Production Deployment
 

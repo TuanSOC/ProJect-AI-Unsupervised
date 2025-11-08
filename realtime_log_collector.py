@@ -180,13 +180,27 @@ class RealtimeLogCollector:
                 is_anomaly, score, detailed_scores, risk_assessment
             )
             
+            # Threat level dựa trên overall_risk từ final_assessment
+            # overall_risk có thể là: CRITICAL, HIGH, MEDIUM, LOW
+            overall_risk = final_assessment.get('overall_risk', 'LOW')
+            if not is_anomaly:
+                threat_level = 'NONE'
+            elif overall_risk == 'CRITICAL':
+                threat_level = 'CRITICAL'
+            elif overall_risk == 'HIGH':
+                threat_level = 'HIGH'
+            elif overall_risk == 'MEDIUM':
+                threat_level = 'MEDIUM'
+            else:
+                threat_level = 'LOW'
+            
             return {
                 'is_sqli': bool(is_anomaly),
                 'score': float(score),
                 'detected_patterns': patterns if patterns else 'N/A',
                 'confidence': confidence,
                 'timestamp': datetime.now().isoformat(),
-                'threat_level': 'CRITICAL' if is_anomaly else 'NONE',
+                'threat_level': threat_level,
                 'detailed_analysis': {
                     'detailed_scores': detailed_scores,
                     'risk_assessment': risk_assessment,
