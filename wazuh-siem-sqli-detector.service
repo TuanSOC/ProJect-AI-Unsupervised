@@ -1,0 +1,26 @@
+[Unit]
+Description=Wazuh SIEM Realtime SQLi Detector
+After=network.target wazuh-manager.service
+Requires=wazuh-manager.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/ai
+ExecStart=/usr/bin/python3 /opt/ai/wazuh_siem_realtime_detector.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Environment variables
+Environment="WAZUH_SIEM_LOG_PATH=/opt/ai/apache_access.log"
+Environment="WAZUH_SIEM_SQLI_LOG=/var/ossec/logs/ai-engine-sqli"
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+

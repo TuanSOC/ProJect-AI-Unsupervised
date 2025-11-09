@@ -254,6 +254,7 @@ AI dev/
 
 Xem thư mục `docs/` để biết chi tiết:
 - **Detection Logic**: `docs/DETECTION_LOGIC_DETAILED.md` - **Tài liệu chi tiết về cách tính risk score, AI model processing, và các công thức**
+- **Wazuh SIEM Setup**: `README_WAZUH_SIEM.md` - **Hướng dẫn setup và chạy trên Wazuh SIEM server**
 - **Deployment Guide**: `docs/DEPLOYMENT_QUICK_START.md` - Hướng dẫn deploy nhanh với Wazuh
 - **Wazuh Integration**: `docs/WAZUH_INTEGRATION.md` - Hướng dẫn tích hợp Wazuh SIEM đầy đủ
 - **Project Review**: `docs/PROJECT_REVIEW_SUMMARY.md` - Tổng hợp đánh giá logic và tham số
@@ -263,11 +264,32 @@ Xem thư mục `docs/` để biết chi tiết:
 
 ## 🎯 Production Deployment
 
-### Ubuntu Setup
+### Ubuntu Setup (Standard)
 ```bash
-chmod +x setup_ubuntu.sh
-./setup_ubuntu.sh
+chmod +x setup_ubuntu_complete.sh
+./setup_ubuntu_complete.sh
 ```
+
+### Wazuh SIEM Integration (Recommended for Production)
+```bash
+# Clone repository
+git clone https://github.com/TuanSOC/ProJect-AI-Unsupervised.git
+cd ProJect-AI-Unsupervised
+
+# Run setup script (requires root)
+sudo chmod +x setup_wazuh_siem.sh
+sudo ./setup_wazuh_siem.sh
+```
+
+**Wazuh SIEM Setup sẽ:**
+- Tự động cài đặt dependencies
+- Copy files đến `/opt/ai`
+- Train AI model (nếu cần)
+- Tạo systemd service
+- Start service tự động
+- Lưu detection logs vào `/var/ossec/logs/ai-engine-sqli`
+
+**Xem chi tiết**: `README_WAZUH_SIEM.md` - Hướng dẫn đầy đủ về Wazuh SIEM integration
 
 ### System Requirements
 - **Python**: 3.8+

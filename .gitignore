@@ -27,6 +27,8 @@ logs/*.jsonl.*
 realtime_sqli_detection.log
 ai_sqli_detection.log
 threat_logs.jsonl
+wazuh_siem_sqli_detector.log
+test_ai-engine-sqli.jsonl
 
 # Model files
 # Keep metadata.json but ignore .pkl (large files)
@@ -63,6 +65,8 @@ ENV/
 
 # Keep setup scripts
 !setup_ubuntu_complete.sh
+!setup_wazuh_siem.sh
 !start_app.sh
 !start_realtime.sh
+!start_wazuh_siem_detector.sh
 
