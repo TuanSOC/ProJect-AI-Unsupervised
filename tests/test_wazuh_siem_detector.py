@@ -52,13 +52,13 @@ wazuh_log_sample = {
 def test_wazuh_siem_detector():
     """Test Wazuh SIEM detector với log mẫu"""
     print("=" * 90)
-    print("🧪 TEST WAZUH SIEM REALTIME SQLI DETECTOR".center(90))
+    print("TEST WAZUH SIEM REALTIME SQLI DETECTOR".center(90))
     print("=" * 90)
     
     # Convert log to JSON string
     log_line = json.dumps(wazuh_log_sample)
     
-    print("\n📋 Log Entry từ Wazuh:")
+    print("\nLog Entry tu Wazuh:")
     print(f"   Timestamp: {wazuh_log_sample['timestamp']}")
     print(f"   Agent: {wazuh_log_sample['agent']['name']} ({wazuh_log_sample['agent']['ip']})")
     print(f"   Manager: {wazuh_log_sample['manager']['name']}")
@@ -76,32 +76,32 @@ def test_wazuh_siem_detector():
     # Decode query để xem rõ hơn
     import urllib.parse
     decoded_query = urllib.parse.unquote_plus(data.get('query_string', ''))
-    print(f"\n🔍 Decoded Query: {decoded_query}")
+    print(f"\nDecoded Query: {decoded_query}")
     
     # Khởi tạo detector
     try:
         detector = WazuhSIEMRealtimeDetector()
         if not detector.detector:
-            print("\n❌ Không thể load model!")
+            print("\nKhong the load model!")
             return
-        print("\n✅ Model loaded successfully!")
+        print("\nModel loaded successfully!")
     except Exception as e:
-        print(f"\n❌ Lỗi khi khởi tạo detector: {e}")
+        print(f"\nLoi khi khoi tao detector: {e}")
         import traceback
         traceback.print_exc()
         return
     
     # Parse log
     print("\n" + "=" * 90)
-    print("📥 PARSING WAZUH LOG".center(90))
+    print("PARSING WAZUH LOG".center(90))
     print("=" * 90)
     
     log_entry = detector._parse_wazuh_log(log_line)
     if not log_entry:
-        print("❌ Không thể parse log!")
+        print("Khong the parse log!")
         return
     
-    print("\n✅ Log parsed successfully!")
+    print("\nLog parsed successfully!")
     print(f"   Remote IP: {log_entry.get('remote_ip', '')}")
     print(f"   Method: {log_entry.get('method', '')}")
     print(f"   URI: {log_entry.get('uri', '')}")
@@ -112,16 +112,16 @@ def test_wazuh_siem_detector():
     
     # Detect SQLi
     print("\n" + "=" * 90)
-    print("🔍 DETECTING SQLI".center(90))
+    print("DETECTING SQLI".center(90))
     print("=" * 90)
     
     detection_result = detector.detect_sqli_realtime(log_entry)
     
     if not detection_result:
-        print("\n❌ Không thể detect!")
+        print("\nKhong the detect!")
         return
     
-    print("\n📊 DETECTION RESULT:")
+    print("\nDETECTION RESULT:")
     print(f"   Is SQLi: {detection_result['is_sqli']}")
     print(f"   Score: {detection_result['score']:.4f}")
     print(f"   Confidence: {detection_result['confidence']}")
@@ -133,7 +133,7 @@ def test_wazuh_siem_detector():
         risk_assessment = detailed.get('risk_assessment', {})
         final_assessment = detailed.get('final_assessment', {})
         
-        print("\n📈 DETAILED ANALYSIS:")
+        print("\nDETAILED ANALYSIS:")
         print(f"   Risk Score: {risk_assessment.get('risk_score', 0):.2f}")
         print(f"   Risk Level: {risk_assessment.get('risk_level', 'UNKNOWN')}")
         print(f"   Overall Risk: {final_assessment.get('overall_risk', 'UNKNOWN')}")
@@ -142,7 +142,7 @@ def test_wazuh_siem_detector():
     # Test save log
     if detection_result['is_sqli']:
         print("\n" + "=" * 90)
-        print("💾 TESTING WAZUH SIEM LOG SAVE".center(90))
+        print("TESTING WAZUH SIEM LOG SAVE".center(90))
         print("=" * 90)
         
         # Save to test file
@@ -164,22 +164,22 @@ def test_wazuh_siem_detector():
         wazuh_siem_realtime_detector._wazuh_siem_log_path = original_path
         
         if os.path.exists(test_log_path):
-            print(f"\n✅ Log đã được lưu vào: {test_log_path}")
+            print(f"\nLog da duoc luu vao: {test_log_path}")
             with open(test_log_path, 'r', encoding='utf-8') as f:
                 content = f.read().strip()
                 if content:
                     saved_log = json.loads(content)
-                    print("\n📄 Saved Log Content:")
+                    print("\nSaved Log Content:")
                     print(json.dumps(saved_log, indent=2, ensure_ascii=False))
                 else:
-                    print(f"\n⚠️  Log file rỗng: {test_log_path}")
+                    print(f"\nWarning: Log file rong: {test_log_path}")
         else:
-            print(f"\n⚠️  Log file không được tạo: {test_log_path}")
+            print(f"\nWarning: Log file khong duoc tao: {test_log_path}")
             print(f"   Thư mục: {os.path.dirname(test_log_path)}")
             print(f"   Thư mục tồn tại: {os.path.exists(os.path.dirname(test_log_path))}")
     
     print("\n" + "=" * 90)
-    print("✅ TEST COMPLETED".center(90))
+    print("TEST COMPLETED".center(90))
     print("=" * 90)
 
 if __name__ == "__main__":

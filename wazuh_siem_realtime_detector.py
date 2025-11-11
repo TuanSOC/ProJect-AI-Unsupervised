@@ -46,7 +46,7 @@ def _ensure_wazuh_siem_log_dir():
         if dirn:
             os.makedirs(dirn, exist_ok=True, mode=0o755)
     except Exception as e:
-        logger.warning(f"⚠️ Không thể tạo thư mục log: {e}")
+        logger.warning(f"Khong the tao thu muc log: {e}")
 
 def _rotate_wazuh_siem_log_if_needed(max_bytes: int = 10 * 1024 * 1024, backups: int = 3):
     """Rotate file log khi quá 10MB"""
@@ -89,7 +89,7 @@ def _append_wazuh_siem_detection_jsonl(entry: dict) -> None:
             with open(_wazuh_siem_log_path, 'a', encoding='utf-8') as f:
                 f.write(line + "\n")
     except Exception as e:
-        logger.error(f"❌ Lỗi khi ghi log Wazuh SIEM: {e}")
+        logger.error(f"Loi khi ghi log Wazuh SIEM: {e}")
 
 class WazuhSIEMRealtimeDetector:
     """Detect SQLi realtime từ log Wazuh SIEM"""
@@ -135,15 +135,15 @@ class WazuhSIEMRealtimeDetector:
                     break
             
             if not model_path:
-                logger.error("❌ Không tìm thấy model file!")
+                logger.error("Khong tim thay model file!")
                 self.detector = None
                 return
             
             self.detector = OptimizedSQLIDetector()
             self.detector.load_model(model_path)
-            logger.info(f"✅ AI Model loaded successfully from {model_path}!")
+            logger.info(f"AI Model loaded successfully from {model_path}!")
         except Exception as e:
-            logger.error(f"❌ Failed to load AI model: {e}")
+            logger.error(f"Failed to load AI model: {e}")
             self.detector = None
     
     def _parse_wazuh_log(self, line):
@@ -165,7 +165,7 @@ class WazuhSIEMRealtimeDetector:
                     elif isinstance(full_log_str, dict):
                         log_entry = self._extract_log_entry_from_wazuh(full_log_str, wazuh_log)
                 except Exception as e:
-                    logger.debug(f"⚠️ Không thể parse full_log: {e}")
+                    logger.debug(f"Khong the parse full_log: {e}")
             
             # Nếu không có full_log, thử dùng data field
             if not log_entry and 'data' in wazuh_log:
@@ -183,10 +183,10 @@ class WazuhSIEMRealtimeDetector:
             return log_entry
             
         except json.JSONDecodeError as e:
-            logger.debug(f"⚠️ JSON decode error: {e}")
+            logger.debug(f"JSON decode error: {e}")
             return None
         except Exception as e:
-            logger.debug(f"⚠️ Parse error: {e}")
+            logger.debug(f"Parse error: {e}")
             return None
     
     def _extract_log_entry_from_wazuh(self, data, wazuh_log):
@@ -218,7 +218,7 @@ class WazuhSIEMRealtimeDetector:
             return log_entry
             
         except Exception as e:
-            logger.debug(f"⚠️ Extract error: {e}")
+            logger.debug(f"Extract error: {e}")
             return None
     
     def detect_sqli_realtime(self, log_entry):
@@ -274,7 +274,7 @@ class WazuhSIEMRealtimeDetector:
             return detection_result
             
         except Exception as e:
-            logger.error(f"❌ Error in detect_sqli_realtime: {e}")
+            logger.error(f"Error in detect_sqli_realtime: {e}")
             return None
     
     def _calculate_detailed_scores(self, features):
@@ -407,10 +407,10 @@ class WazuhSIEMRealtimeDetector:
             # Ghi vào file Wazuh SIEM log (thread-safe, có rotation)
             _append_wazuh_siem_detection_jsonl(wazuh_event)
             
-            logger.info(f"✅ SQLi detected và đã lưu vào Wazuh SIEM log: {_wazuh_siem_log_path}")
+            logger.info(f"SQLi detected va da luu vao Wazuh SIEM log: {_wazuh_siem_log_path}")
                 
         except Exception as e:
-            logger.error(f"❌ Error saving Wazuh SIEM log: {e}")
+            logger.error(f"Error saving Wazuh SIEM log: {e}")
     
     def process_log_line(self, line):
         """Process một dòng log từ Wazuh"""
@@ -440,7 +440,7 @@ class WazuhSIEMRealtimeDetector:
                 self.save_wazuh_siem_log(log_entry, detection_result)
                 
                 # Log chi tiết
-                logger.warning(f"🚨 SQLi DETECTED!")
+                logger.warning(f"SQLi DETECTED!")
                 logger.warning(f"   IP: {log_entry.get('remote_ip', 'Unknown')}")
                 logger.warning(f"   URI: {log_entry.get('uri', 'Unknown')}")
                 logger.warning(f"   Query: {log_entry.get('query_string', 'None')[:100]}")
@@ -450,21 +450,21 @@ class WazuhSIEMRealtimeDetector:
                 
         except Exception as e:
             self.stats['errors'] += 1
-            logger.error(f"❌ Error processing log line: {e}")
+            logger.error(f"Error processing log line: {e}")
     
     def start_monitoring(self):
         """Bắt đầu monitoring"""
-        logger.info("🚀 Starting Wazuh SIEM realtime SQLi monitoring...")
-        logger.info(f"📁 Monitoring log file: {self.log_path}")
-        logger.info(f"📝 Wazuh SIEM detection log: {_wazuh_siem_log_path}")
-        logger.info(f"💡 Set WAZUH_SIEM_SQLI_LOG env var to customize log path")
+        logger.info("Starting Wazuh SIEM realtime SQLi monitoring...")
+        logger.info(f"Monitoring log file: {self.log_path}")
+        logger.info(f"Wazuh SIEM detection log: {_wazuh_siem_log_path}")
+        logger.info(f"Set WAZUH_SIEM_SQLI_LOG env var to customize log path")
         
         if not self.detector:
-            logger.error("❌ AI Model không được load! Không thể tiếp tục.")
+            logger.error("AI Model khong duoc load! Khong the tiep tuc.")
             return
         
         if not os.path.exists(self.log_path):
-            logger.error(f"❌ Log file không tồn tại: {self.log_path}")
+            logger.error(f"Log file khong ton tai: {self.log_path}")
             return
         
         self.running = True
@@ -482,29 +482,29 @@ class WazuhSIEMRealtimeDetector:
                             if line:
                                 self.process_log_line(line)
                         except Exception as e:
-                            logger.debug(f"⚠️ Error processing line: {e}")
+                            logger.debug(f"Error processing line: {e}")
                     else:
                         time.sleep(0.1)  # Sleep khi không có dòng mới
                         
         except KeyboardInterrupt:
-            logger.info("🛑 Received interrupt signal, stopping...")
+            logger.info("Received interrupt signal, stopping...")
             self.running = False
         except Exception as e:
-            logger.error(f"❌ Error in monitoring loop: {e}")
+            logger.error(f"Error in monitoring loop: {e}")
             self.running = False
         finally:
             self._print_stats()
     
     def stop_monitoring(self):
         """Dừng monitoring"""
-        logger.info("🛑 Stopping log monitoring...")
+        logger.info("Stopping log monitoring...")
         self.running = False
     
     def _print_stats(self):
         """Print statistics"""
         runtime = (datetime.now() - self.stats['start_time']).total_seconds()
         logger.info("=" * 80)
-        logger.info("📊 STATISTICS:")
+        logger.info("STATISTICS:")
         logger.info(f"   Total logs processed: {self.stats['total_logs']}")
         logger.info(f"   SQLi detected: {self.stats['sqli_detected']}")
         logger.info(f"   Errors: {self.stats['errors']}")
@@ -514,7 +514,7 @@ class WazuhSIEMRealtimeDetector:
 
 def signal_handler(sig, frame):
     """Handle interrupt signal"""
-    logger.info("🛑 Received interrupt signal, stopping...")
+    logger.info("Received interrupt signal, stopping...")
     sys.exit(0)
 
 def main():
@@ -538,7 +538,7 @@ def main():
         detector.start_monitoring()
         
     except Exception as e:
-        logger.error(f"❌ Fatal error: {e}")
+        logger.error(f"Fatal error: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

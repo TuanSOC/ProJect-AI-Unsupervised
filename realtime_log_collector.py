@@ -125,9 +125,9 @@ class RealtimeLogCollector:
         try:
             self.detector = OptimizedSQLIDetector()
             self.detector.load_model('models/optimized_sqli_detector.pkl')
-            logger.info("✅ AI Model loaded successfully for realtime detection!")
+            logger.info("AI Model loaded successfully for realtime detection!")
         except Exception as e:
-            logger.error(f"❌ Failed to load AI model: {e}")
+            logger.error(f"Failed to load AI model: {e}")
             self.detector = None
     
     def detect_sqli_realtime(self, log_entry):
@@ -725,7 +725,7 @@ class RealtimeLogCollector:
                 detailed_analysis = detection_result.get('detailed_analysis', {})
                 
                 # Log threat with detailed analysis
-                logger.warning(f"🚨 SQLi DETECTED!")
+                logger.warning(f"SQLi DETECTED!")
                 logger.warning(f"   IP: {log_entry.get('remote_ip', 'Unknown')}")
                 logger.warning(f"   URI: {log_entry.get('uri', 'Unknown')}")
                 logger.warning(f"   Query: {log_entry.get('query_string', 'None')}")
@@ -749,7 +749,7 @@ class RealtimeLogCollector:
                     entropy_analysis = detailed_analysis.get('entropy_analysis', {})
                     final_assessment = detailed_analysis.get('final_assessment', {})
                     
-                    logger.warning("📊 DETAILED ANALYSIS:")
+                    logger.warning("DETAILED ANALYSIS:")
                     logger.warning(f"   Risk Level: {risk_assessment.get('risk_level', 'UNKNOWN')}")
                     logger.warning(f"   Risk Score: {risk_assessment.get('risk_score', 0):.2f}")
                     logger.warning(f"   Attack Vectors: {attack_vectors.get('attack_vectors', [])}")
@@ -773,7 +773,7 @@ class RealtimeLogCollector:
                         nosql_scores = detailed_scores.get('nosql_scores', {})
                         cookie_scores = detailed_scores.get('cookie_scores', {})
                         
-                        logger.warning("🔍 FEATURE SCORES:")
+                        logger.warning("FEATURE SCORES:")
                         logger.warning(f"   SQLi Patterns: {base_scores.get('sqli_patterns', 0)}")
                         logger.warning(f"   Special Chars: {base_scores.get('special_chars', 0)}")
                         logger.warning(f"   SQL Keywords: {base_scores.get('sql_keywords', 0)}")
@@ -912,14 +912,14 @@ class RealtimeLogCollector:
             )
             
             if response.status_code == 200:
-                logger.info(f"✅ Detection result sent to webhook")
+                logger.info(f"Detection result sent to webhook")
             else:
-                logger.warning(f"⚠️ Webhook response: {response.status_code}")
+                logger.warning(f"Webhook response: {response.status_code}")
                 
         except requests.exceptions.RequestException as e:
-            logger.warning(f"⚠️ Failed to send to webhook: {e}")
+            logger.warning(f"Failed to send to webhook: {e}")
         except Exception as e:
-            logger.error(f"❌ Error sending to webhook: {e}")
+            logger.error(f"Error sending to webhook: {e}")
     
     def save_threat_log(self, log_entry, detection_result):
         """Lưu threat log vào file (backward compatibility)"""
@@ -971,17 +971,17 @@ class RealtimeLogCollector:
             # Ghi vào file Wazuh log (thread-safe, có rotation)
             _append_wazuh_detection_jsonl(wazuh_event)
             
-            logger.debug(f"✅ Wazuh log saved: {_wazuh_detection_log_path}")
+            logger.debug(f"Wazuh log saved: {_wazuh_detection_log_path}")
                 
         except Exception as e:
             logger.error(f"Error saving Wazuh log: {e}")
     
     def start_monitoring(self):
         """Bắt đầu monitoring"""
-        logger.info("🚀 Starting realtime SQLi monitoring...")
-        logger.info(f"📁 Monitoring log file: {self.log_path}")
-        logger.info(f"📝 Wazuh detection log: {_wazuh_detection_log_path}")
-        logger.info(f"💡 Set WAZUH_SQLI_DETECTION_LOG env var to customize log path")
+        logger.info("Starting realtime SQLi monitoring...")
+        logger.info(f"Monitoring log file: {self.log_path}")
+        logger.info(f"Wazuh detection log: {_wazuh_detection_log_path}")
+        logger.info(f"Set WAZUH_SQLI_DETECTION_LOG env var to customize log path")
         
         self.running = True
         
@@ -1015,13 +1015,13 @@ class RealtimeLogCollector:
                             continue
                             
         except FileNotFoundError:
-            logger.error(f"❌ Log file not found: {self.log_path}")
+            logger.error(f"Log file not found: {self.log_path}")
             logger.error("Please check if Apache is running and log file exists")
         except PermissionError:
-            logger.error(f"❌ Permission denied accessing log file: {self.log_path}")
+            logger.error(f"Permission denied accessing log file: {self.log_path}")
             logger.error("Please run with sudo or check file permissions")
         except Exception as e:
-            logger.error(f"❌ Error in log monitoring: {e}")
+            logger.error(f"Error in log monitoring: {e}")
         finally:
             self.stop_monitoring()
     
@@ -1141,7 +1141,7 @@ class RealtimeLogCollector:
     
     def stop_monitoring(self):
         """Dừng monitoring"""
-        logger.info("🛑 Stopping log monitoring...")
+        logger.info("Stopping log monitoring...")
         self.running = False
 
 def main():

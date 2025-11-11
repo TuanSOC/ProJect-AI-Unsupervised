@@ -247,7 +247,7 @@ def detect_sqli_async(log_entry: Dict[str, Any], model_path: str = 'models/optim
         
         # Log detection
         if is_sqli:
-            logger.warning("🚨 SQLi DETECTED!")
+            logger.warning("SQLi DETECTED!")
             logger.warning(f"   IP: {log_entry.get('remote_ip', 'unknown')}")
             logger.warning(f"   URI: {log_entry.get('uri', 'unknown')}")
             logger.warning(f"   Score: {score:.3f}")
@@ -524,13 +524,13 @@ if __name__ == '__main__':
         load_model_cached()
         
         # Start Flask app
-        logger.info("🚀 Starting Improved AI SQLi Detection Web App...")
-        logger.info("🌐 Access: http://localhost:5000")
-        logger.info("📊 Features: Thread-safe, Cached, Concurrent processing")
+        logger.info("Starting Improved AI SQLi Detection Web App...")
+        logger.info("Access: http://localhost:5000")
+        logger.info("Features: Thread-safe, Cached, Concurrent processing")
         
         app.run(debug=False, host='0.0.0.0', port=5000)
         
     except Exception as e:
-        logger.error(f"❌ Failed to start app: {e}")
+        logger.error(f"Failed to start app: {e}")
     finally:
         shutdown_handler()
